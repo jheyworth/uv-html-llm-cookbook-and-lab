@@ -1,0 +1,65 @@
+# UV & HTML BMad OSS & Enterprise Help Architecture
+
+`choose.py` lets an AI agent (Claude Code, Codex CLI and others) ask you a multiple-choice question on a web page, and get your answer back as plain text. It needs no cloud service, no API key and no packages: just [uv](https://docs.astral.sh/uv/).
+
+## Try the demo
+
+Open a terminal in this folder, then copy and run:
+
+```sh
+./demo.sh
+```
+
+[demo.sh](demo.sh) takes about a minute. It runs three rounds with the real script: one choice, several choices plus your own answer, and the copy-prompt fallback. After each round it shows what an agent would receive.
+
+## How it works
+
+1. The agent runs `uv run --no-project choose.py "Plan A" "Plan B"`.
+2. The script starts a small web server on this computer only (`localhost`, port 8765) and opens the page in your browser.
+3. You click an answer. The page sends it back to the script.
+4. The script prints your answer and stops. The agent reads that printed line as the result of its command.
+
+Status messages go to a separate stream (stderr), so the answer is always the last line the agent sees.
+
+If the browser can't reach the script, for example on a locked-down work laptop, the script opens a **copy-prompt page** instead. Clicking an answer there copies a ready-made prompt, such as `My answer to "Which plan?": Plan B`, for you to paste into the chat.
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--question "Which plan?"` | Text shown above the buttons. Default: "Pick one". |
+| `--multi` | Tick boxes and a Submit button; the answer is a list, such as `["Plan A", "Plan C"]`. |
+| `--other` | Adds a free-text "Other..." box. |
+| `--timeout 600` | Seconds to wait for an answer. Default: 300. |
+| `--load-wait 30` | Seconds for the browser to load the page before the copy-prompt page also opens. Default: 30. |
+| `--fallback` | Go straight to the copy-prompt page. |
+
+Example with everything:
+
+```sh
+uv run --no-project choose.py --question "Which snacks?" --multi --other --timeout 600 "Biscuits" "Fruit" "Crisps"
+```
+
+An option that itself starts with `-` needs `--` before the options: `choose.py -- "-1" "+1"`.
+
+## Exit codes
+
+| Code | Meaning | What the agent should do |
+| --- | --- | --- |
+| 0 | Answered | Read the last line of output |
+| 2 | Command typed wrong | Fix the command |
+| 3 | Nobody answered in time | Ask again, or carry on without |
+| 4 | Switched to the copy-prompt page | Wait for the person to paste their answer into the chat |
+
+## Notes for agents
+
+- The answer from the normal page has spaces after commas in a list; the pasted prompt has none. Both are valid JSON: parse the list, don't compare the text.
+- Many agents stop a command after about 2 minutes. Run `choose.py` in the background, or with a longer command timeout.
+- `BROWSER=true` stops the browser from opening, which is useful for automated tests.
+- uv can run the script straight from a web address: `uv run --no-project https://…/choose.py "A" "B"`. Tested from a local address, not yet from GitHub.
+
+## Limits
+
+- The browser and the agent must be on the same computer. A cloud-based agent's `localhost` is the cloud machine, not yours.
+- Work laptops may block uv or Python from running at all. The script can't detect that, because it never starts; the agent would have to write a copy-prompt page itself.
+- Not yet tested under Codex CLI, Antigravity CLI or GitHub Copilot.
