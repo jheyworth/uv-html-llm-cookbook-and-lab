@@ -560,30 +560,46 @@ command = CHOOSE + " " + " ".join(shlex.quote(a.replace("__MENU__", url)) for a 
 expected = state["code"] == {"fallback": 4, "timeout": 3}.get(t["id"], 0)
 reopen = f"{MENU} --reopen" + (f" --port {args.port}" if args.port != 8764 else "")
 answer = state["answer"] or ("(see the prompt you pasted)" if t.get("copy") else "(nothing)")
-print(f"""The person ran a test on the test page. Show them this result exactly as laid out here, as Markdown:
+# The reply layout Justin agreed (18 Oct): the answer first and big, then a BMad-style menu, the command as a footnote.
+RULE, NBSP = "────────────────────────────────────", "&nbsp;"
+status = "answered" if state["code"] == 0 else state["meaning"]
+status += f" · exit code {state['code']}" + ("" if expected else " · not what this test expects")
+W = "&nbsp;" * 24
+print(f"""The person answered a test on the HTML test page. Show them this, exactly as laid out, as Markdown:
 
-### {'✅' if expected else '❌'} {t['name']}
+{RULE}
 
-| | |
-|---|---|
-| **Answer** | `{answer}` |
-| **Exit code** | {state['code']} ({state['meaning']}){'' if expected else ', not what this test expects'} |
+## You chose: {answer}
 
-Command that ran:
-```
-{command}
-```
+**{t['name']} test** · {status}
+
+{RULE}
 """)
 acting = bool(t.get("act")) and state["code"] == 0 and (state["answer"] == t["yes"] if t.get("yes") else True)
 if acting:
     print(f"The person asked you to do this step now. {t['act'].replace('{answer}', answer)}\n")
 if t.get("copy"):
     print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to, "
-          "and show what they pasted under the table.\n")
-print(f"""{'When that is done, ask' if acting else 'Then ask'} "Go back to the test page?" as a menu with two options:
-  1. Yes, back to the test page
-  2. No, I'm done
-Use your multiple-choice question tool if you have one; otherwise show the two numbered options and wait for 1 or 2.
-If they choose Yes, run this in the background and do what it prints:
+          "and show what they pasted under the answer.\n")
+print(f"""{'When that is done, show' if acting else 'Then show'} this, exactly as laid out, as Markdown, in the same message:
+
+## What next?
+
+| &nbsp;&nbsp;#&nbsp;&nbsp; | &nbsp;&nbsp;Code&nbsp;&nbsp; | &nbsp;&nbsp;Description{W} |
+|:-:|:-:|---|
+| **1** | **BK** | &nbsp;&nbsp;**Go back to the HTML test page** |
+| **2** | **DN** | &nbsp;&nbsp;**Stop here** |
+
+{NBSP}
+
+{RULE}
+
+*Command that ran:* `{command}`
+
+{RULE}
+
+Then stop and wait for the person's reply in the chat. Don't use a multiple-choice question tool or a pop-up.
+Accept a number, a code (BK, DN) or plain words.
+If they choose 1 or BK, run this in the background and do what it prints:
 {reopen}
-A new test page tab opens in front, and the old one closes itself. If they choose No, stop.""")
+A new test page tab opens in front, and the old one closes itself. If they choose 2 or DN, stop.""")
