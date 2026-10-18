@@ -1,8 +1,9 @@
-# Usage: uv run --no-project menu.py [--timeout SECONDS]
+# Usage: uv run --no-project menu.py [--port PORT] [--timeout SECONDS]
 # Opens a test page: a left menu with one item per choose.py test, and the
 # real choose.py page for the selected test in the main pane. Once the person
 # answers, this script prints the result as a prompt for the agent and exits.
-# The prompt ends by offering to reopen the page; the open tab reconnects.
+# The prompt ends by offering to reopen the page in a new tab; the old tab
+# closes itself, or greys out if the browser won't let it close.
 import argparse, http.server, json, os, re, secrets, shlex, subprocess, sys, tempfile, threading, \
     urllib.request, webbrowser
 from pathlib import Path
@@ -10,8 +11,8 @@ from pathlib import Path
 REPO = "https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/"
 parser = argparse.ArgumentParser()
 parser.add_argument("--timeout", type=float, default=3600, help="seconds before the page stops (default 3600)")
-parser.add_argument("--reopen", action="store_true",
-                    help="wait up to 2 minutes for the open tab to reconnect before opening a new one")
+parser.add_argument("--port", type=int, default=8764, help="port for the test page (default 8764)")
+parser.add_argument("--reopen", action="store_true", help="keep the done marks from earlier tests")
 args = parser.parse_args()
 
 here = Path(__file__).with_name("choose.py")
@@ -54,7 +55,7 @@ TOKEN = secrets.token_hex(4)  # tells an old tab that a new menu has started
 lock = threading.Lock()
 cur = {"test": None, "proc": None, "port": None, "copy_page": None}
 state = {"status": "idle"}
-delivered, reconnected = threading.Event(), threading.Event()
+delivered = threading.Event()
 
 # Colours and type from bmadcode.com (dark bands), with its light colours for the toggle.
 THEME = """<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -145,9 +146,10 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 <main id="main"><h2>Pick a test</h2><p class="todo">Choose a test on the left. Its page appears here for you to answer.
 Your answer goes back to Claude Code.</p></main></div>
 <script>
-const TESTS=__TESTS__, TOKEN=__TOKEN__, CHOOSE=__CHOOSE__;
+const TESTS=__TESTS__, TOKEN=__TOKEN__, CHOOSE=__CHOOSE__, REOPEN=__REOPEN__;
 const nav=document.querySelector('nav'), main=document.getElementById('main');
-let ticks={}; try{ticks=JSON.parse(sessionStorage.getItem('menu-ticks')||'{}')}catch(e){}
+// Done marks are shared between tabs; a fresh start (not a reopen) clears them.
+let ticks={}; try{ if(!REOPEN) localStorage.removeItem('menu-ticks'); ticks=JSON.parse(localStorage.getItem('menu-ticks')||'{}'); }catch(e){}
 let current=null, finished=false;
 for (const t of TESTS) {
   const b=document.createElement('button'); b.type='button'; b.dataset.id=t.id;
@@ -174,20 +176,25 @@ async function poll(){
   let s; try{ s=await (await fetch('/state')).json(); }catch(e){ return; }
   if (s.status!=='done' || !current || s.id!==current.id) return;
   finished=true;
-  ticks[current.id]=1; try{sessionStorage.setItem('menu-ticks',JSON.stringify(ticks))}catch(e){}
+  ticks[current.id]=1; try{localStorage.setItem('menu-ticks',JSON.stringify(ticks))}catch(e){}
   nav.querySelector('[data-id="'+current.id+'"] .tick').textContent='done';
   for (const b of nav.querySelectorAll('button')) b.disabled=true;
   const p=el('div','panel');
   if (current.copy) p.append(el('div','eyebrow','Copy-prompt page'), el('div','big','Paste the copied prompt into Claude Code.'));
   else if (s.code===0) p.append(el('div','eyebrow','You chose'), el('div','big',s.answer));
   else p.append(el('div','eyebrow','Result'), el('div','big','Nothing came back: exit code '+s.code+' ('+s.meaning+').'));
-  p.append(el('p',null,'Switch back to Claude Code to see this test run. It will ask if you want to come back here; this page will then refresh by itself.'));
+  p.append(el('p',null,'Switch back to Claude Code to see this test run. It will ask if you want to come back; if you do, a new test page opens and this tab closes.'));
   main.replaceChildren(el('h2',null,current.name), p);
-  // Background tabs run timers slowly, so also check the moment the tab is looked at again.
-  const ping=async()=>{ try{ const r=await (await fetch('/ping?from='+TOKEN)).text(); if(r!==TOKEN) location.reload(); }catch(e){} };
-  setInterval(ping, 500);
+  // When a newer test page starts, this tab retires: it closes, or greys out if the browser won't allow that.
+  const ping=async()=>{ try{ const r=await (await fetch('/ping')).text(); if(r!==TOKEN) retire(); }catch(e){} };
+  const timer=setInterval(ping, 1000);
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) ping(); });
-  window.addEventListener('focus', ping);
+  function retire(){
+    clearInterval(timer); window.close();
+    document.body.style.opacity='.45';
+    main.replaceChildren(el('h2',null,'This test page is finished'),
+      el('p','todo','A newer test page is open in another tab. You can close this one.'));
+  }
 }
 setInterval(poll, 500);
 const tb=document.getElementById('theme');
@@ -197,7 +204,7 @@ const setTheme=l=>{ document.documentElement.dataset.theme=l?'light':''; tb.text
 setTheme(document.documentElement.dataset.theme==='light');
 tb.onclick=()=>setTheme(document.documentElement.dataset.theme!=='light');
 </script></html>"""
-SHELL = (SHELL.replace("__THEME__", THEME).replace("__TOKEN__", json.dumps(TOKEN)).replace("__CHOOSE__", json.dumps(CHOOSE))
+SHELL = (SHELL.replace("__THEME__", THEME).replace("__REOPEN__", json.dumps(args.reopen)).replace("__TOKEN__", json.dumps(TOKEN)).replace("__CHOOSE__", json.dumps(CHOOSE))
          .replace("__TESTS__", json.dumps([{"id": t["id"], "name": t["name"], "todo": t["todo"], "copy": t.get("copy", False),
                                             "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
 
@@ -211,10 +218,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        path, _, query = self.path.partition("?")
+        path = self.path.partition("?")[0]
         if path == "/ping":
-            if f"from={TOKEN}" not in query and "from=" in query:
-                reconnected.set()  # an old tab is back
             self.reply(200, TOKEN.encode(), "text/plain")
         elif path == "/state":
             if state.get("status") == "done":
@@ -249,23 +254,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 try:
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 8764), Handler)
-except OSError:  # port busy: a free one, so an old tab can't reconnect
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+except OSError:  # port busy: a free one (an old tab then can't see it and stays open)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
 url = f"http://localhost:{server.server_address[1]}"
-
-
-def open_unless_reconnected():
-    if args.reopen:
-        print(f"Test page ready at {url}. Waiting up to 2 minutes for the open tab to reconnect.", file=sys.stderr)
-    if reconnected.wait(120 if args.reopen else 1.5):
-        print(f"The open test page reconnected at {url}", file=sys.stderr)
-    else:
-        print(f"Opening the test page at {url}", file=sys.stderr)
-        webbrowser.open(url)
-
-
-threading.Thread(target=open_unless_reconnected, daemon=True).start()
+print(f"Opening the test page at {url}", file=sys.stderr)
+webbrowser.open(url)  # a new tab; an older test page tab closes itself
 timer = threading.Timer(args.timeout, server.shutdown)
 timer.start()
 server.serve_forever()
@@ -285,6 +279,6 @@ if t.get("copy"):
     print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to; "
           "then show what they pasted.")
 print(f'Tell them that in one line. Then ask: "Go back to the test page?" If they say yes, '
-      f"run this in the background and do what it prints:\n{MENU} --reopen\n"
-      "Then tell them to switch to the test page tab in their browser: it refreshes by itself. "
-      "If they closed that tab, a new one opens within 2 minutes.")
+      f"run this in the background and do what it prints:\n{MENU} --reopen"
+      f"{f' --port {args.port}' if args.port != 8764 else ''}\n"
+      "A new test page tab opens in front, and the old one closes itself.")
