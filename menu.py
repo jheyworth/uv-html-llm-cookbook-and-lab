@@ -365,7 +365,7 @@ border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-w
 <li><span class="n">1</span><div>Pick a test on the left.</div></li>
 <li><span class="n">2</span><div>Answer it in the page that opens here.</div></li>
 <li class="key"><span class="n">3</span><div><strong>Then switch back to your LLM chat session yourself.</strong> This page can't do that for you.</div></li>
-<li><span class="n">4</span><div>The chat shows your answer and asks "Go back to the test page?" If you say <strong>Yes</strong>, this page opens again automatically, ready for your next test.</div></li>
+<li><span class="n">4</span><div>The chat shows your answer and asks <strong>What next?</strong> Reply <strong>1</strong> or <strong>BK</strong>, and this page opens again automatically, ready for your next test.</div></li>
 </ol>
 <div class="eyebrow hood-h">Under the hood</div>
 <ul class="hood">
