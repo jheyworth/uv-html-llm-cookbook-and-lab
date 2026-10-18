@@ -12,6 +12,8 @@ Run "uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm
 
 A test page opens in your browser, with a list of tests on the left. Pick one and answer it, then switch back to your LLM chat session yourself. The chat shows your answer and asks if you want another test. If you say yes, the test page opens again automatically.
 
+The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
+
 `menu.py` options: `--port` (default 8764) and `--timeout` (seconds before the page stops, default 3600).
 
 ## Files
@@ -20,6 +22,7 @@ A test page opens in your browser, with a list of tests on the left. Pick one an
 - `menu.py`: the test page
 - `demo.sh`: terminal demo
 - `tests.sh`: automated checks
+- `assets/`: pictures for the Rich content tests, and the greenfield flowchart page. menu.py serves the flowchart at `/flowchart`, because GitHub serves HTML files as plain text.
 
 ## Try the demo
 
