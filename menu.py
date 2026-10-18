@@ -140,11 +140,15 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);padding:10px 18px;font-size:15px;cursor:pointer;margin-top:16px}
 .welcome{max-width:720px}
 .welcome h2{font-size:clamp(26px,3.2vw,34px);line-height:1.2;margin:6px 0 10px}
-.intro{margin:0 0 28px;color:var(--muted);font-size:17px;max-width:60ch}
-.steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
-.steps li{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
-.steps li.key{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
-.steps .n{flex:none;width:28px;height:28px;display:grid;place-items:center;font-family:var(--mono);font-weight:500;color:var(--accent-fg);background:var(--accent);border-radius:2px}
+.lead{margin:0 0 14px;font-size:20px;line-height:1.5;font-weight:500;letter-spacing:-.005em;max-width:34em;text-wrap:pretty}
+.body{margin:0 0 12px;font-size:16px;line-height:1.65;color:var(--muted);max-width:40em;text-wrap:pretty}
+.body em{font-style:italic;color:var(--fg)}
+.body strong{font-weight:600;color:var(--fg)}
+.welcome .body:last-of-type{margin-bottom:32px}
+.steps{list-style:none;margin:8px 0 0;padding:0;max-width:62ch}
+.steps li{display:flex;gap:16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
+.steps li:last-child{border-bottom:1px solid var(--line)}
+.steps .n{flex:none;width:2ch;font-family:var(--mono);font-size:13px;color:var(--muted-2)}
 @media (max-width:720px){.wrap{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line)}}
 </style>
 <header class="top"><div><div class="eyebrow">uv-html-llm cookbook &amp; lab</div><h1>LLM + HTML GUI Integration: Proof of Concept</h1></div>
@@ -152,7 +156,9 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 <div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Tests</div></nav>
 <main id="main"><section class="welcome"><div class="eyebrow">uv-html-llm cookbook &amp; lab</div>
 <h2>Welcome to the LLM + HTML GUI Integration Proof of Concept</h2>
-<p class="intro">Your AI agent asks you a multiple-choice question on a web page, and gets your answer back as plain text.</p>
+<p class="lead">This page shows how your LLM chat can ask you a question here in your browser, instead of in plain chat text.</p>
+<p class="body">A web page can use proper UI design (layout, images, examples) to give each question its context, because <em>a picture is worth a thousand words</em>. That makes it useful for <strong>teaching, training and integrated help</strong>.</p>
+<p class="body">Each test on the left tries one kind of question: one choice, several choices, your own answer, and a few awkward cases.</p>
 <div class="eyebrow">How it works</div>
 <ol class="steps">
 <li><span class="n">1</span><div>Pick a test on the left.</div></li>
