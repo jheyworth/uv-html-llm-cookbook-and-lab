@@ -6,10 +6,10 @@
 
 Create a new, empty project folder and open a new chat session in it, in an agent that can run commands (Claude Code, Codex CLI and others). The BMad tests install BMad into that folder. Then paste one of these two prompts.
 
-**1. Demo (now):** runs straight from this private GitHub repo, with nothing cloned. Put a read-only GitHub token in place of `<TOKEN>`, once:
+**1. Demo (now):** runs straight from this public GitHub repo, with nothing cloned:
 
 ```text
-Run this in the background and do what it prints: K='<TOKEN>'; uv run --no-project "https://x-access-token:$K@raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" --key "$K"
+Run "uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" in the background and do what it prints.
 ```
 
 **2. Production (final):** the scripts come from the company's own Git, such as an on-prem GitHub Enterprise, with a `git clone`, using the company's own login and SSO. Many enterprise Git servers don't serve raw links, and none use `raw.githubusercontent.com`. Put the company's address in place of `<company git>`:
@@ -24,7 +24,7 @@ A test page opens in your browser, with a list of tests on the left. Pick one an
 
 The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
 
-`menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (the GitHub token in prompt 1, used for the script's own downloads; with it, the pictures come through the test page from your machine, because a browser can't send the token). Use a fine-grained token: read-only, this repo only, short expiry. From a clone (prompt 2), no key is needed: menu.py uses the files beside it.
+`menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (a read-only GitHub token, only for running a private copy from its raw link). From a clone (prompt 2), no key is needed: menu.py uses the files beside it.
 
 ## Files
 
