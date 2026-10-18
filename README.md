@@ -1,4 +1,4 @@
-# UV & HTML BMad OSS & Enterprise Help Architecture
+# LLM + HTML GUI Integration: Proof of Concept
 
 `choose.py` lets an AI agent (Claude Code, Codex CLI and others) ask you a multiple-choice question on a web page, and get your answer back as plain text. It needs no cloud service, no API key and no packages: just [uv](https://docs.astral.sh/uv/).
 
@@ -10,7 +10,7 @@ Paste this into a new chat session in an agent that can run commands (Claude Cod
 Run "uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" in the background and do what it prints.
 ```
 
-A test page opens in your browser, with a list of tests on the left. Pick one and answer it. Your answer goes back to the chat session, which shows the result and asks if you want to go back for another test.
+A test page opens in your browser, with a list of tests on the left. Pick one and answer it, then switch back to your LLM chat session yourself. The chat shows your answer and asks if you want another test. If you say yes, the test page opens again automatically.
 
 `menu.py` options: `--port` (default 8764) and `--timeout` (seconds before the page stops, default 3600).
 

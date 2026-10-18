@@ -115,7 +115,7 @@ def finish(t, answer, code):
 
 SHELL = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>choose.py Tests</title>__THEME__
+<title>LLM + HTML GUI Integration: Proof of Concept</title>__THEME__
 <style>
 *{box-sizing:border-box} body{margin:0;line-height:1.5}
 .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -138,13 +138,28 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .big{font-size:22px;font-weight:600;margin:8px 0 16px;overflow-wrap:anywhere}
 .panel{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:2px;background:var(--panel);padding:20px;max-width:640px}
 .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);padding:10px 18px;font-size:15px;cursor:pointer;margin-top:16px}
+.welcome{max-width:720px}
+.welcome h2{font-size:clamp(26px,3.2vw,34px);line-height:1.2;margin:6px 0 10px}
+.intro{margin:0 0 28px;color:var(--muted);font-size:17px;max-width:60ch}
+.steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+.steps li{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.steps li.key{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.steps .n{flex:none;width:28px;height:28px;display:grid;place-items:center;font-family:var(--mono);font-weight:500;color:var(--accent-fg);background:var(--accent);border-radius:2px}
 @media (max-width:720px){.wrap{grid-template-columns:1fr} nav{border-right:0;border-bottom:1px solid var(--line)}}
 </style>
-<header class="top"><div><div class="eyebrow">uv-html-llm cookbook &amp; lab</div><h1>choose.py tests</h1></div>
+<header class="top"><div><div class="eyebrow">uv-html-llm cookbook &amp; lab</div><h1>LLM + HTML GUI Integration: Proof of Concept</h1></div>
 <button id="theme" type="button">Light</button></header>
 <div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Tests</div></nav>
-<main id="main"><h2>Pick a test</h2><p class="todo">Choose a test on the left. Its page appears here for you to answer.
-Your answer goes back to your LLM chat session.</p></main></div>
+<main id="main"><section class="welcome"><div class="eyebrow">uv-html-llm cookbook &amp; lab</div>
+<h2>Welcome to the LLM + HTML GUI Integration Proof of Concept</h2>
+<p class="intro">Your AI agent asks you a multiple-choice question on a web page, and gets your answer back as plain text.</p>
+<div class="eyebrow">How it works</div>
+<ol class="steps">
+<li><span class="n">1</span><div>Pick a test on the left.</div></li>
+<li><span class="n">2</span><div>Answer it in the page that opens here.</div></li>
+<li class="key"><span class="n">3</span><div><strong>Then switch back to your LLM chat session yourself.</strong> This page can't do that for you.</div></li>
+<li><span class="n">4</span><div>The chat shows your answer and asks "Go back to the test page?" If you say <strong>Yes</strong>, this page opens again automatically, ready for your next test.</div></li>
+</ol></section></main></div>
 <script>
 const TESTS=__TESTS__, TOKEN=__TOKEN__, CHOOSE=__CHOOSE__, REOPEN=__REOPEN__;
 const nav=document.querySelector('nav'), main=document.getElementById('main');
