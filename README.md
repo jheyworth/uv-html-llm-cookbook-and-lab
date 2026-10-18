@@ -4,25 +4,27 @@
 
 ## Try it from your LLM chat session
 
-Create a new, empty project folder and open a new chat session in it, in an agent that can run commands (Claude Code, Codex CLI and others). The BMad tests install BMad into that folder. Then paste this:
+Create a new, empty project folder and open a new chat session in it, in an agent that can run commands (Claude Code, Codex CLI and others). The BMad tests install BMad into that folder. Then paste one of these two prompts.
 
-```text
-Run "uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" in the background and do what it prints.
-```
-
-A test page opens in your browser, with a list of tests on the left. Pick one and answer it, then switch back to your LLM chat session yourself. The chat shows your answer and asks if you want another test. If you say yes, the test page opens again automatically.
-
-The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
-
-`menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (a GitHub token, for when the repo is private).
-
-**From a private repo:** put a read-only GitHub token in place of `<TOKEN>`, once. The prompt uses it both to download the script and, as `--key`, for the script's own downloads:
+**1. Demo (now):** runs straight from this private GitHub repo, with nothing cloned. Put a read-only GitHub token in place of `<TOKEN>`, once:
 
 ```text
 Run this in the background and do what it prints: K='<TOKEN>'; uv run --no-project "https://x-access-token:$K@raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" --key "$K"
 ```
 
-The pictures then come through the test page from your machine, because a browser can't send the token. Use a fine-grained token: read-only, this repo only, short expiry.
+**2. Production (final):** the scripts come from the company's own Git, such as an on-prem GitHub Enterprise, with a `git clone`, using the company's own login and SSO. Many enterprise Git servers don't serve raw links, and none use `raw.githubusercontent.com`. Put the company's address in place of `<company git>`:
+
+```text
+Run "git clone https://<company git>/<path>/uv-html-llm-cookbook-and-lab", then run "uv run --no-project uv-html-llm-cookbook-and-lab/menu.py" in the background and do what it prints.
+```
+
+The raw-link route in prompt 1 is only for this demo.
+
+A test page opens in your browser, with a list of tests on the left. Pick one and answer it, then switch back to your LLM chat session yourself. The chat shows your answer and asks if you want another test. If you say yes, the test page opens again automatically.
+
+The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
+
+`menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (the GitHub token in prompt 1, used for the script's own downloads; with it, the pictures come through the test page from your machine, because a browser can't send the token). Use a fine-grained token: read-only, this repo only, short expiry. From a clone (prompt 2), no key is needed: menu.py uses the files beside it.
 
 ## Files
 

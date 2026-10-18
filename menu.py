@@ -371,7 +371,7 @@ border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-w
 <ul class="hood">
 <li>A <strong>Python script on GitHub</strong> builds this <strong>web page on your laptop</strong>.</li>
 <li>The page <strong>talks to your LLM chat</strong> through <strong>localhost</strong>, a tiny web server on your own machine. Your clicks go back to the chat as plain text.</li>
-<li><strong>No install, no cloud:</strong> one prompt and <strong>uv</strong>. In a company, the script can sit on an <strong>on-prem GitHub Enterprise</strong>.</li>
+<li><strong>No install, no cloud:</strong> one prompt and <strong>uv</strong>. In a company, the scripts come from <strong>its own Git</strong>, such as an on-prem GitHub Enterprise, with a <strong>git clone</strong>.</li>
 <li><strong>Fallback:</strong> if a locked-down laptop blocks localhost, the page copies a prompt for you to paste into the chat instead.</li>
 </ul></section></main></div>
 <script>
