@@ -22,7 +22,7 @@ The raw-link route in prompt 1 is only for this demo.
 
 A test page opens in your browser, with a list of tests on the left. Pick one and answer it, then switch back to your LLM chat session yourself. The chat shows your answer and asks if you want another test. If you say yes, the test page opens again automatically.
 
-The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
+The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages under the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
 
 `menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (a read-only GitHub token, only for running a private copy from its raw link). From a clone (prompt 2), no key is needed: menu.py uses the files beside it.
 
@@ -66,9 +66,9 @@ If the browser can't reach the script, for example on a locked-down work laptop,
 | `--question "Which plan?"` | Text shown above the buttons. Default: "Pick one". |
 | `--multi` | Tick boxes and a Submit button; the answer is a list, such as `["Plan A", "Plan C"]`. |
 | `--other` | Adds a free-text "Other..." box. |
-| `--image SRC` | A picture above the question: an `https://` address, a local PNG, JPG, GIF, SVG or WebP file, or SVG text starting with `<svg`. Local files and SVG text are put into the page itself. |
-| `--video ID` | Plays a YouTube video above the question, by its 11-character ID (privacy-enhanced youtube-nocookie.com player). |
-| `--page URL` | Shows a web page above the question, in a sandboxed frame: an `https://` address, or `http://localhost:PORT/...` for a page served on this machine (the test page serves its flowchart this way). Sites that block framing will show as blank. |
+| `--image SRC` | A picture under the question: an `https://` address, a local PNG, JPG, GIF, SVG or WebP file, or SVG text starting with `<svg`. Local files and SVG text are put into the page itself. |
+| `--video ID` | Plays a YouTube video under the question, by its 11-character ID (privacy-enhanced youtube-nocookie.com player). |
+| `--page URL` | Shows a web page under the question, in a sandboxed frame: an `https://` address, or `http://localhost:PORT/...` for a page served on this machine (the test page serves its flowchart this way). Sites that block framing will show as blank. |
 | `--timeout 600` | Seconds to wait for an answer. Default: 300. |
 | `--load-wait 30` | Seconds for the browser to load the page before the copy-prompt page also opens. Default: 30. |
 | `--fallback` | Go straight to the copy-prompt page. |

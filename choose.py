@@ -2,7 +2,7 @@
 #                         [--image SRC] [--video YOUTUBE_ID] [--page HTTPS_URL]
 #                         [--load-wait SECONDS] [--fallback] "Option A" "Option B" "Option C"
 # Serves a page with one button per option (and optionally a picture, video or
-# web page above the question), waits for a click,
+# web page under the question), waits for a click,
 # prints the chosen option to stdout, then exits.
 #
 # Exit codes:
@@ -24,11 +24,11 @@ parser.add_argument("--other", action="store_true", help="add a free-text 'Other
 parser.add_argument("--load-wait", type=float, default=30,
                     help="seconds for the browser to load the page before the copy-prompt page also opens (default 30)")
 parser.add_argument("--fallback", action="store_true", help="go straight to the copy-prompt page")
-parser.add_argument("--image", help="picture above the question: an https:// (or http://localhost) address, a local file "
+parser.add_argument("--image", help="picture under the question: an https:// (or http://localhost) address, a local file "
                     "(PNG, JPG, GIF, SVG, WebP) or SVG text starting with <svg")
-parser.add_argument("--video", help="YouTube video ID to play above the question")
+parser.add_argument("--video", help="YouTube video ID to play under the question")
 parser.add_argument("--page", help="https:// web page (or one served on this machine at http://localhost) "
-                    "to show above the question, in a sandboxed frame")
+                    "to show under the question, in a sandboxed frame")
 parser.add_argument("options", nargs="*")
 args = parser.parse_args()
 TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
@@ -105,7 +105,7 @@ button{{display:block;width:100%;padding:14px;margin:10px 0;font-size:17px;curso
 label{{display:block;padding:12px;margin:8px 0;font-size:17px;border:1px solid #ccc;border-radius:6px;cursor:pointer}}
 #other{{display:block;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;font-size:17px}}
 textarea{{width:100%;box-sizing:border-box;height:90px;font-size:15px}}</style>
-{MEDIA}<h2>{html.escape(args.question)}</h2>{note}{buttons}<p id="msg"></p>
+<h2>{html.escape(args.question)}</h2>{MEDIA}{note}{buttons}<p id="msg"></p>
 <script>
 const COPY_MODE={json.dumps(copy_mode)}, QUESTION={json.dumps(args.question)};
 async function deliver(body, shown){{
