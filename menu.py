@@ -29,6 +29,11 @@ local_diagram = Path(__file__).with_name("assets") / "how-it-works.svg"
 if not local_diagram.exists():
     local_diagram = Path(tempfile.gettempdir()) / "menu-how-it-works.svg"
     local_diagram.write_bytes(urllib.request.urlopen(REPO + "assets/how-it-works.svg", timeout=30).read())
+# The flowchart page this menu serves at /flowchart: the clone's own copy, or one fetched once from GitHub.
+flowchart = Path(__file__).with_name("assets") / "greenfield-flowchart.html"
+if not flowchart.exists():
+    flowchart = Path(tempfile.gettempdir()) / "menu-greenfield-flowchart.html"
+    flowchart.write_bytes(urllib.request.urlopen(REPO + "assets/greenfield-flowchart.html", timeout=30).read())
 # Drawn by the LLM for the "drawn by the LLM" test: an agent would write this SVG itself.
 CHART = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" font-family="Helvetica, Arial, sans-serif">'
          '<text x="10" y="20" font-size="14" fill="#8b96a5">Sign-ups this week</text>'
@@ -141,35 +146,61 @@ TESTS = [
                "--question", "What does this page help you set up?",
                "The ticket tree", "A web server", "A YouTube channel"]),
     dict(id="bmad-install", group="BMad", name="1. Install BMad",
-         proves="The page asks; your LLM session does the work. Here it installs BMad for you.",
-         how="Click Yes. Your session runs this command in your project folder and shows you the result.",
+         proves="The page hands you the exact command: copy it, paste it, done.",
+         steps=["Click the Copy button.", "Open a terminal in your project folder.",
+                "Paste what's on the clipboard into the terminal and press Enter to run it.",
+                "Switch back to this page and say how it went, below."],
          run="npx skills add bmad-code-org/BMAD-METHOD -y",
-         todo="Click Yes, then switch back to your session and watch it install.",
-         yes="Yes, install BMad here",
-         act="Run this command in the session's project folder, in the foreground, and show the person the last "
-             "lines of its output: `npx skills add bmad-code-org/BMAD-METHOD -y`. Before running it, check the folder: "
-             "if it holds anything other than this session's own files, ask the person to confirm first. If the "
-             "command stops to ask a question you can't answer, stop it, show the person the question, and offer to "
-             "run it again with their answer.",
-         args=["--timeout", "3600", "--question", "Install BMad in this project folder now?", "Yes, install BMad here", "Not now"]),
+         todo="Copy, paste, run, then answer below. If you got an error, paste it into Other.",
+         args=["--timeout", "3600", "--other", "--question", "How did the install go?", "It worked", "I got an error"]),
     dict(id="bmad-setup", group="BMad", name="2. Set up BMad",
-         proves="One step leads to the next: the page walks you through it, and the session does each step.",
-         how="Click Yes. Your session runs bmad setup, which gets the folder ready for BMad's skills.",
-         run="bmad setup",
+         proves="The page asks; your LLM session does the work. One click here, and the session runs the step.",
+         how="Click Yes. Your answer goes back to your chat session, which runs bmad setup for you. Setup gets the "
+             "folder ready for BMad's skills. Then switch back to your session to see what it did.",
          todo="Click Yes, then switch back to your session.",
          yes="Yes, run bmad setup",
-         act="Use the bmad skill to run bmad setup in this project, and show the person what it did. " + "If you can't find the skill, tell the person that skills added during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again.",
+         act="Use the bmad skill to run bmad setup in this project, and show the person what it did. " + "If you can't find the skill, tell the person that skills installed during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again. If you are blocked from running it, say so and ask the person to tell you in the chat to go ahead.",
          args=["--timeout", "3600", "--question", "Run bmad setup now?", "Yes, run bmad setup", "Not now"]),
     dict(id="bmad-po", group="BMad", name="3. Get help on the PO agent",
          proves="You can ask any BMad skill to explain itself, in plain words, right after its name.",
-         how="Click Yes. Your session asks Sofia, the PO agent, for her FAQ and shows you her answer. "
-             "Put any other skill's name in place of bmad-agent-po to get help on that one.",
-         run="/bmad-agent-po please show me a FAQ on what the PO Agent can do",
+         how="Click Yes. Your chat session calls Sofia, the PO agent, as /bmad-agent-po please show me a FAQ on "
+             "what the PO Agent can do, and shows you her FAQ. To get help on any other skill, type its name and "
+             "your request in your chat the same way.",
          todo="Click Yes, then switch back to your session and read Sofia's answer.",
          yes="Yes, ask Sofia",
          act="Run the bmad-agent-po skill with this request: `please show me a FAQ on what the PO Agent can do`. "
-             "Show the person her answer. " + "If you can't find the skill, tell the person that skills added during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again.",
+             "Show the person her answer. " + "If you can't find the skill, tell the person that skills installed during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again. If you are blocked from running it, say so and ask the person to tell you in the chat to go ahead.",
          args=["--timeout", "3600", "--question", "Ask Sofia, the PO agent, for her FAQ now?", "Yes, ask Sofia", "Not now"]),
+    dict(id="bmad-customize", group="BMad", name="4. Customize Sofia",
+         proves="A real choice, made on the page: tick the rules you want, and the session sets them up.",
+         how="Tick one or more rules, or write your own in Other, then press Submit. Your chat session uses the "
+             "bmad-customize skill to save them as rules Sofia, the PO agent, always follows, in a small file under "
+             "_bmad/custom/. Run step 3 again to see her follow them.",
+         todo="Tick, press Submit, then switch back to your session.",
+         act="Use the bmad-customize skill to add these rules to Sofia, the PO agent (bmad-agent-po), as persistent "
+             "facts: {answer}. Show the person the file it wrote. " + "If you can't find the skill, tell the person that skills installed during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again. If you are blocked from running it, say so and ask the person to tell you in the chat to go ahead.",
+         args=["--timeout", "3600", "--multi", "--other", "--question", "What should Sofia always do?",
+               "Write tickets in British English", "Keep every ticket under 200 words",
+               "Ask before slicing an epic into stories"]),
+    dict(id="greenfield-start", group="Greenfield project", name="Get started",
+         proves="One question to BMad's own help gets a new project going, step by step.",
+         how="Click Yes. Your chat session asks the bmad skill, BMad's built-in help: /bmad Help me set up a new "
+             "Greenfield Project. It looks at your project and tells you where to start and what comes next.",
+         todo="Click Yes, then switch back to your session.",
+         yes="Yes, ask bmad",
+         act="Run the bmad skill with this request: `Help me set up a new Greenfield Project`. Show the person its "
+             "answer. " + "If you can't find the skill, tell the person that skills installed during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again. If you are blocked from running it, say so and ask the person to tell you in the chat to go ahead.",
+         args=["--timeout", "3600", "--question", "Ask bmad how to start a new greenfield project?",
+               "Yes, ask bmad", "Not now"]),
+    dict(id="greenfield-flowchart", group="Greenfield project", name="Workflow flowchart",
+         proves="A whole interactive page can come with a question, served from a plain GitHub repo.",
+         how="The flowchart is an HTML page in this project's GitHub repo. GitHub serves it as plain text, so it "
+             "can't be linked to directly; instead this test page downloads it and serves it itself, from your "
+             "machine, at /flowchart. choose.py shows it in a frame like any web page. Click any command in it to "
+             "copy it.",
+         todo="Read the flowchart, then answer.",
+         args=["--timeout", "3600", "--page", "__MENU__/flowchart",
+               "--question", "With a vague notion, which phase do you start in?", "Clarify", "Plan", "Build & Verify"]),
 ]
 BY_ID = {t["id"]: t for t in TESTS}
 TOKEN = secrets.token_hex(4)  # tells an old tab that a new menu has started
@@ -197,12 +228,12 @@ button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid va
 /* Raised answer buttons (option D): soft blue border, a deeper bottom edge, a shadow; they press down on click. */
 :root{--btn-top:#2b313a;--btn-bot:#1e232a;--btn-line:#5b7fd6;--btn-edge:#2f4a8f;--btn-shadow:rgba(0,0,0,.55)}
 :root[data-theme="light"]{--btn-top:#ffffff;--btn-bot:#eef1f5;--btn-line:#5b7fd6;--btn-edge:#3f63bf;--btn-shadow:rgba(20,30,50,.18)}
-body>button,#go,.primary{background:linear-gradient(var(--btn-top),var(--btn-bot));color:var(--fg);
+body>button,#go,.primary,.copy{background:linear-gradient(var(--btn-top),var(--btn-bot));color:var(--fg);
 border:1.5px solid var(--btn-line);border-bottom:5px solid var(--btn-edge);border-radius:6px;
 box-shadow:0 4px 10px var(--btn-shadow);transition:transform .1s,box-shadow .1s,border-bottom-width .1s}
-body>button:hover:not(:disabled),#go:hover:not(:disabled),.primary:hover{transform:translateY(-1px);
-box-shadow:0 6px 14px var(--btn-shadow);border-color:var(--btn-line);border-bottom-color:var(--btn-edge)}
-body>button:active:not(:disabled),#go:active:not(:disabled),.primary:active{transform:translateY(3px);
+body>button:hover:not(:disabled),#go:hover:not(:disabled),.primary:hover,.copy:hover{filter:brightness(1.12);
+border-color:var(--btn-line);border-bottom-color:var(--btn-edge)}
+body>button:active:not(:disabled),#go:active:not(:disabled),.primary:active,.copy:active{transform:translateY(3px);
 border-bottom-width:2px;box-shadow:0 1px 3px var(--btn-shadow)}
 label{border:1px solid var(--line-2)!important;border-radius:2px!important;background:var(--panel)}
 input,textarea{background:var(--panel);color:var(--fg);border:1px solid var(--line-2)}
@@ -216,7 +247,7 @@ def run_test(t):
         if old and old.poll() is None:
             old.terminate()
         env = {**os.environ, "PYTHONIOENCODING": "utf-8", "BROWSER": "true"}  # the menu shows the page
-        p = subprocess.Popen([sys.executable, str(choose_path), *t["args"]], env=env, text=True,
+        p = subprocess.Popen([sys.executable, str(choose_path), *(a.replace("__MENU__", url) for a in t["args"])], env=env, text=True,
                              encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cur.update(test=t, proc=p, port=None, copy_page=None)
         state.clear(); state.update(status="running", id=t["id"])
@@ -255,8 +286,14 @@ SHELL = """<!doctype html><html lang="en"><meta charset="utf-8">
 #theme{padding:6px 12px;font-size:13px;cursor:pointer}
 .wrap{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 71px)}
 nav{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px}
-nav .eyebrow{font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--fg);background:var(--line);padding:8px 10px;margin:0 -12px 6px} nav .group{margin-top:18px}
-nav button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:10px 12px;font-size:15px;
+nav{gap:8px} .grp-sec{display:flex;flex-direction:column;gap:2px}
+nav button.grp{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);
+background:var(--line);border:0;border-radius:0;padding:9px 10px;margin:0 -12px;width:calc(100% + 24px);justify-content:flex-start;gap:10px;cursor:pointer}
+nav button.grp:hover:not(:disabled){background:var(--line-2);border-color:transparent}
+.grp .arrow{display:inline-block;width:10px;transition:transform .15s} .grp-sec.open .grp .arrow{transform:rotate(90deg)}
+.grp .count{margin-left:auto;font-weight:500;color:var(--muted)}
+.grp-sec .items{display:none;flex-direction:column;gap:2px;padding:4px 0 6px} .grp-sec.open .items{display:flex}
+nav button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:6px 12px;font-size:14px;
 cursor:pointer;background:transparent;border:1px solid transparent;border-left:3px solid transparent}
 nav button:hover:not(:disabled){background:var(--panel);border-color:var(--line)}
 nav button[aria-current="true"]{background:var(--panel);border-color:var(--line);border-left-color:var(--accent);font-weight:600}
@@ -278,10 +315,19 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .welcome .body:last-of-type{margin-bottom:32px}
 .writeup{max-width:720px;margin-bottom:20px} .writeup h2{margin-bottom:8px}
 .writeup .lead{margin-bottom:18px} .writeup .eyebrow{margin-bottom:6px}
+.dothis{margin:6px 0 4px;padding:18px 20px;background:var(--panel);border:1px solid var(--line-2);border-radius:6px}
+.dothis ol{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:16px}
+.dothis li{display:flex;gap:14px;align-items:flex-start;font-size:19px;line-height:1.45;font-weight:500}
+.dothis li>div{flex:1;min-width:0}
+.dothis .n{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:50%;
+font-family:var(--mono);font-size:15px;font-weight:600;background:var(--line);color:var(--fg)}
+.dothis .runbox .run{font-size:16px;padding:14px 16px}
+.dothis .copy{font-size:17px;padding:0 24px}
+.runbox{display:flex;gap:10px;align-items:stretch;margin:14px 0 0}
+.runbox .run{flex:1;margin:0}
+.copy{flex:none;padding:0 18px;font-size:15px;font-weight:600;cursor:pointer}
 .run{margin:14px 0 0;padding:12px 14px;font-family:var(--mono);font-size:14px;background:var(--panel);
 border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}
-.before{margin:0 0 18px;padding:14px 16px;background:var(--panel);border:1px solid var(--line-2);border-radius:2px}
-.before ol{margin:6px 0 0;padding-left:22px;font-size:16px;line-height:1.7}
 .tryit{margin:14px 0 0;font-size:15px;color:var(--fg);font-weight:500}
 .steps{list-style:none;margin:8px 0 0;padding:0;max-width:62ch}
 .steps li{display:flex;gap:16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
@@ -291,7 +337,7 @@ border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-w
 </style>
 <header class="top"><div><div class="eyebrow">uv-html-llm cookbook &amp; lab</div><h1>LLM + HTML GUI Integration: Proof of Concept</h1></div>
 <button id="theme" type="button">Light</button></header>
-<div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Question types</div></nav>
+<div class="wrap"><nav aria-label="Tests"></nav>
 <main id="main"><section class="welcome"><div class="eyebrow">uv-html-llm cookbook &amp; lab</div>
 <h2>Welcome to the LLM + HTML GUI Integration Proof of Concept</h2>
 <p class="lead">This page shows how your LLM chat can ask you a question here in your browser, instead of in plain chat text.</p>
@@ -310,39 +356,68 @@ const nav=document.querySelector('nav'), main=document.getElementById('main');
 // Done marks are shared between tabs; a fresh start (not a reopen) clears them.
 let ticks={}; try{ if(!REOPEN) localStorage.removeItem('menu-ticks'); ticks=JSON.parse(localStorage.getItem('menu-ticks')||'{}'); }catch(e){}
 let current=null, finished=false;
-let group='';
-for (const t of TESTS) {
-  if (t.group && t.group!==group) { group=t.group; nav.appendChild(el('div','eyebrow group',group)); }
-  const b=document.createElement('button'); b.type='button'; b.dataset.id=t.id;
-  b.innerHTML='<span></span><span class="tick"></span>'; b.firstChild.textContent=t.name;
-  if (ticks[t.id]) b.lastChild.textContent='done';
-  b.onclick=()=>start(t); nav.appendChild(b);
+// The menu is an accordion: one band per group, all open at first. Open groups are remembered
+// between tabs, so a reopened page keeps your place; a fresh start opens them all again.
+const groups=new Map();
+for (const t of TESTS) { const g=t.group||'Question types'; if(!groups.has(g)) groups.set(g,[]); groups.get(g).push(t); }
+let open=[...groups.keys()];
+try{ if(!REOPEN) localStorage.removeItem('menu-open'); open=JSON.parse(localStorage.getItem('menu-open')||'null')||open; }catch(e){}
+function saveOpen(){ try{ localStorage.setItem('menu-open',JSON.stringify(open)); }catch(e){} }
+function setOpen(g, on){ const sec=nav.querySelector('[data-group="'+CSS.escape(g)+'"]'); if(!sec) return;
+  sec.classList.toggle('open',on); sec.firstChild.setAttribute('aria-expanded',on);
+  open=open.filter(x=>x!==g); if(on) open.push(g); saveOpen(); }
+for (const [g,list] of groups) {
+  const sec=el('section','grp-sec'); sec.dataset.group=g;
+  const h=el('button','grp'); h.type='button';
+  h.append(el('span','arrow','▸'), el('span','gname',g), el('span','count',String(list.length)));
+  h.onclick=()=>setOpen(g, !sec.classList.contains('open'));
+  const items=el('div','items');
+  for (const t of list) {
+    const b=document.createElement('button'); b.type='button'; b.dataset.id=t.id;
+    b.innerHTML='<span></span><span class="tick"></span>'; b.firstChild.textContent=t.name;
+    if (ticks[t.id]) b.lastChild.textContent='done';
+    b.onclick=()=>start(t); items.appendChild(b);
+  }
+  sec.append(h, items); nav.appendChild(sec);
+  const on=open.includes(g); sec.classList.toggle('open',on); h.setAttribute('aria-expanded',on);
 }
 function head(t){
   if (!t.proves) return [el('h2',null,t.name), el('p','todo',t.todo)];
   const w=el('section','writeup');
-  w.append(el('h2',null,t.name), el('p','lead',t.proves), el('div','eyebrow','How it works'), el('p','body',t.how));
-  if (t.before.length) {
-    const b=el('div','before'); b.append(el('div','eyebrow','Before you start'));
-    const ol=el('ol'); for (const x of t.before) ol.append(el('li',null,x)); b.append(ol);
-    w.insertBefore(b, w.children[2]);
+  w.append(el('h2',null,t.name), el('p','lead',t.proves));
+  if (t.how) w.append(el('div','eyebrow','How it works'), el('p','body',t.how));
+  let runAt=w;
+  if (t.steps.length) {
+    const box=el('div','dothis'); box.append(el('div','eyebrow','Do this'));
+    const ol=el('ol'); t.steps.forEach((x,k)=>{ const li=el('li'); li.append(el('span','n',String(k+1)), el('div',null,x));
+      ol.append(li); if (k===0) runAt=li.lastChild; });
+    box.append(ol); w.append(box);
   }
-  if (t.run) w.append(el('pre','run',t.run));
-  w.append(el('p','tryit','Try it: '+t.todo));
+  if (t.run) {
+    const box=el('div','runbox'), c=el('button','copy','Copy'); c.type='button';
+    c.onclick=async()=>{ let ok=false;
+      try{ await navigator.clipboard.writeText(t.run); ok=true; }catch(e){}
+      if (!ok) { const r=document.createRange(); r.selectNodeContents(box.firstChild);
+        const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); try{ ok=document.execCommand('copy'); }catch(e){} }
+      c.textContent=ok?'Copied':'Press Cmd/Ctrl+C'; setTimeout(()=>c.textContent='Copy',2000); };
+    box.append(el('pre','run',t.run), c); runAt.append(box);
+  }
+  if (!t.steps.length) w.append(el('p','tryit','Try it: '+t.todo));
   return [w];
 }
 function el(tag, cls, text){ const e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; }
 async function start(t){
   if (finished) return;
   current=t;
-  for (const b of nav.querySelectorAll('button')) b.setAttribute('aria-current', b.dataset.id===t.id);
+  for (const b of nav.querySelectorAll('button[data-id]')) b.setAttribute('aria-current', b.dataset.id===t.id);
+  setOpen(t.group||'Question types', true);
   main.replaceChildren(...head(t), el('p','todo','Starting…'));
   await fetch('/start/'+t.id,{method:'POST'});
   if (current!==t) return;
   const f=el('iframe'); f.title=t.name+' test page'; f.src='/test?'+Date.now();
   f.setAttribute('allow','clipboard-write; encrypted-media; picture-in-picture; fullscreen');
   f.onload=()=>{ try{ f.style.height=Math.max(480, f.contentDocument.documentElement.scrollHeight+24)+'px'; }catch(e){} };
-  main.replaceChildren(...head(t), f, el('p','cmd',CHOOSE+' '+t.shown));
+  main.replaceChildren(...head(t), f, el('p','cmd',CHOOSE+' '+t.shown.replaceAll('__MENU__', location.origin)));
   if (t.copy) { const b=el('button','primary',"I've copied it"); b.type='button';
     b.onclick=()=>fetch('/copied',{method:'POST'}); main.appendChild(b); }
 }
@@ -382,7 +457,7 @@ tb.onclick=()=>setTheme(document.documentElement.dataset.theme!=='light');
 SHELL = (SHELL.replace("__THEME__", THEME).replace("__REOPEN__", json.dumps(args.reopen)).replace("__TOKEN__", json.dumps(TOKEN)).replace("__CHOOSE__", json.dumps(CHOOSE))
          .replace("__TESTS__", json.dumps([{"id": t["id"], "name": t["name"], "todo": t["todo"], "copy": t.get("copy", False),
                                             "group": t.get("group", ""),
-                                            "proves": t.get("proves", ""), "how": t.get("how", ""), "before": t.get("before", []), "run": t.get("run", ""), "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
+                                            "proves": t.get("proves", ""), "how": t.get("how", ""), "steps": t.get("steps", []), "run": t.get("run", ""), "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -401,6 +476,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if state.get("status") == "done":
                 delivered.set()
             self.reply(200, json.dumps(state).encode(), "application/json")
+        elif path == "/flowchart":  # served from here, since GitHub serves HTML as plain text
+            self.reply(200, flowchart.read_bytes())
         elif path == "/test":  # the real choose.py page, restyled
             if cur["copy_page"]:
                 page = cur["copy_page"].read_text(encoding="utf-8")
@@ -447,7 +524,7 @@ if state.get("status") != "done":
     print("Nobody picked a test on the test page. Stop.")
     sys.exit(0)
 t = cur["test"]
-command = CHOOSE + " " + " ".join(shlex.quote(a) for a in t["args"])
+command = CHOOSE + " " + " ".join(shlex.quote(a.replace("__MENU__", url)) for a in t["args"])
 expected = state["code"] == {"fallback": 4, "timeout": 3}.get(t["id"], 0)
 reopen = f"{MENU} --reopen" + (f" --port {args.port}" if args.port != 8764 else "")
 answer = state["answer"] or ("(see the prompt you pasted)" if t.get("copy") else "(nothing)")
@@ -465,12 +542,13 @@ Command that ran:
 {command}
 ```
 """)
-if t.get("act") and state["answer"] == t["yes"]:
-    print(f"The person asked you to do this step now. {t['act']}\n")
+acting = bool(t.get("act")) and state["code"] == 0 and (state["answer"] == t["yes"] if t.get("yes") else True)
+if acting:
+    print(f"The person asked you to do this step now. {t['act'].replace('{answer}', answer)}\n")
 if t.get("copy"):
     print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to, "
           "and show what they pasted under the table.\n")
-print(f"""{'When that is done, ask' if t.get('act') and state['answer'] == t['yes'] else 'Then ask'} "Go back to the test page?" as a menu with two options:
+print(f"""{'When that is done, ask' if acting else 'Then ask'} "Go back to the test page?" as a menu with two options:
   1. Yes, back to the test page
   2. No, I'm done
 Use your multiple-choice question tool if you have one; otherwise show the two numbered options and wait for 1 or 2.

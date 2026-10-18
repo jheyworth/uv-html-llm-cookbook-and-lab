@@ -27,7 +27,8 @@ parser.add_argument("--fallback", action="store_true", help="go straight to the 
 parser.add_argument("--image", help="picture above the question: an https:// address, a local file "
                     "(PNG, JPG, GIF, SVG, WebP) or SVG text starting with <svg")
 parser.add_argument("--video", help="YouTube video ID to play above the question")
-parser.add_argument("--page", help="https:// web page to show above the question, in a sandboxed frame")
+parser.add_argument("--page", help="https:// web page (or one served on this machine at http://localhost) "
+                    "to show above the question, in a sandboxed frame")
 parser.add_argument("options", nargs="*")
 args = parser.parse_args()
 TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
@@ -59,10 +60,10 @@ def make_media():
                      'title="Video" allow="encrypted-media; picture-in-picture; fullscreen" '
                      'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>')
     if args.page:
-        if not args.page.startswith("https://"):
-            parser.error("--page: give an https:// address")
+        if not re.match(r"https://|http://(localhost|127\.0\.0\.1)(:\d+)?/", args.page):
+            parser.error("--page: give an https:// address, or http://localhost:PORT/... for a page on this machine")
         parts.append(f'<iframe class="media page" src="{html.escape(args.page)}" title="Web page" '
-                     'sandbox="allow-scripts allow-same-origin"></iframe>')
+                     'sandbox="allow-scripts allow-same-origin" allow="clipboard-write"></iframe>')
     return "".join(parts)
 
 
