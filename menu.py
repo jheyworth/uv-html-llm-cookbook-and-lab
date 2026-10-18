@@ -313,6 +313,8 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .body em{font-style:italic;color:var(--fg)}
 .body strong{font-weight:600;color:var(--fg)}
 .welcome .body:last-of-type{margin-bottom:32px}
+.hood-h{margin-top:32px} .hood{margin:8px 0 0;padding-left:20px;max-width:40em;font-size:16px;line-height:1.6;color:var(--muted)}
+.hood li{margin:6px 0} .hood strong{color:var(--fg);font-weight:600}
 .writeup{max-width:720px;margin-bottom:20px} .writeup h2{margin-bottom:8px}
 .writeup .lead{margin-bottom:18px} .writeup .eyebrow{margin-bottom:6px}
 .dothis{margin:6px 0 4px;padding:18px 20px;background:var(--panel);border:1px solid var(--line-2);border-radius:6px}
@@ -342,14 +344,21 @@ border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-w
 <h2>Welcome to the LLM + HTML GUI Integration Proof of Concept</h2>
 <p class="lead">This page shows how your LLM chat can ask you a question here in your browser, instead of in plain chat text.</p>
 <p class="body">A web page can use proper UI design (layout, images, examples) to give each question its context, because <em>a picture is worth a thousand words</em>. That makes it useful for <strong>teaching, training and integrated help</strong>.</p>
-<p class="body">Each test on the left tries one kind of question: one choice, several choices, your own answer, and a few awkward cases.</p>
+<p class="body">The tests on the left come in four groups: question types, rich content such as pictures, video and web pages, BMad, and starting a greenfield project.</p>
 <div class="eyebrow">How it works</div>
 <ol class="steps">
 <li><span class="n">1</span><div>Pick a test on the left.</div></li>
 <li><span class="n">2</span><div>Answer it in the page that opens here.</div></li>
 <li class="key"><span class="n">3</span><div><strong>Then switch back to your LLM chat session yourself.</strong> This page can't do that for you.</div></li>
 <li><span class="n">4</span><div>The chat shows your answer and asks "Go back to the test page?" If you say <strong>Yes</strong>, this page opens again automatically, ready for your next test.</div></li>
-</ol></section></main></div>
+</ol>
+<div class="eyebrow hood-h">Under the hood</div>
+<ul class="hood">
+<li>A <strong>Python script on GitHub</strong> builds this <strong>web page on your laptop</strong>.</li>
+<li>The page <strong>talks to your LLM chat</strong> through <strong>localhost</strong>, a tiny web server on your own machine. Your clicks go back to the chat as plain text.</li>
+<li><strong>No install, no cloud:</strong> one prompt and <strong>uv</strong>. In a company, the script can sit on an <strong>on-prem GitHub Enterprise</strong>.</li>
+<li><strong>Fallback:</strong> if a locked-down laptop blocks localhost, the page copies a prompt for you to paste into the chat instead.</li>
+</ul></section></main></div>
 <script>
 const TESTS=__TESTS__, TOKEN=__TOKEN__, CHOOSE=__CHOOSE__, REOPEN=__REOPEN__;
 const nav=document.querySelector('nav'), main=document.getElementById('main');
