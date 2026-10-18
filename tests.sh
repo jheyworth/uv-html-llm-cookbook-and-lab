@@ -107,8 +107,12 @@ rm -f "$FB"
 
 echo "Run straight from GitHub"
 URL=https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/choose.py
-if curl -sf -o "$T/remote.py" "$URL"; then
-  BROWSER=true uv run --no-project "$URL" --question "Which plan?" "Plan A" "Plan B" > "$T/out" 2>/dev/null & P=$!
+# A private repo needs a GitHub token: GITHUB_KEY if set, else the gh CLI's own login, if any.
+KEY=${GITHUB_KEY:-$(gh auth token 2>/dev/null)}
+RUN_URL=$URL; AUTH=()
+if [ -n "$KEY" ]; then RUN_URL=${URL/https:\/\//https://x-access-token:$KEY@}; AUTH=(-H "Authorization: token $KEY"); fi
+if curl -sf "${AUTH[@]}" -o "$T/remote.py" "$URL"; then
+  BROWSER=true uv run --no-project "$RUN_URL" --question "Which plan?" "Plan A" "Plan B" > "$T/out" 2>/dev/null & P=$!
   waitport; click "Plan B"; wait $P; ex=$?
   check "uv runs choose.py from its GitHub address" "$ex $(cat "$T/out")" "0 Plan B"
   cmp -s "$T/remote.py" choose.py; check "GitHub copy matches this folder's choose.py" $? 0

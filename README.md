@@ -14,7 +14,15 @@ A test page opens in your browser, with a list of tests on the left. Pick one an
 
 The tests come in four groups: **Question types** (the kinds of question choose.py can ask), **Rich content** (pictures, video and web pages above the question), **BMad** (install BMad, set it up, ask the PO agent for help, and customize her) and **Greenfield project** (ask BMad how to start, and an interactive flowchart of the workflow).
 
-`menu.py` options: `--port` (default 8764) and `--timeout` (seconds before the page stops, default 3600).
+`menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (a GitHub token, for when the repo is private).
+
+**From a private repo:** put a read-only GitHub token in the link and pass it once more as `--key`, so the script's own downloads can use it:
+
+```text
+Run "uv run --no-project https://x-access-token:<TOKEN>@raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py --key <TOKEN>" in the background and do what it prints.
+```
+
+The pictures then come through the test page from your machine, because a browser can't send the token. Use a fine-grained token: read-only, this repo only, short expiry.
 
 ## Files
 

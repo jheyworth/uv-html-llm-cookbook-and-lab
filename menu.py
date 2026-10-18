@@ -1,4 +1,4 @@
-# Usage: uv run --no-project menu.py [--port PORT] [--timeout SECONDS]
+# Usage: uv run --no-project menu.py [--port PORT] [--timeout SECONDS] [--key GITHUB_TOKEN]
 # Opens a test page: a left menu with one item per choose.py test, and the
 # real choose.py page for the selected test in the main pane. Once the person
 # answers, this script prints the result as a prompt for the agent and exits.
@@ -13,7 +13,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--timeout", type=float, default=3600, help="seconds before the page stops (default 3600)")
 parser.add_argument("--port", type=int, default=8764, help="port for the test page (default 8764)")
 parser.add_argument("--reopen", action="store_true", help="keep the done marks from earlier tests")
+parser.add_argument("--key", help="GitHub token, for when the repo is private: used for this script's own downloads")
 args = parser.parse_args()
+
+
+def fetch(path):
+    # Downloads one file from the repo; with --key, the token goes in a header, never in an address.
+    headers = {"Authorization": f"token {args.key}"} if args.key else {}
+    return urllib.request.urlopen(urllib.request.Request(REPO + path, headers=headers), timeout=30).read()
 
 here = Path(__file__).with_name("choose.py")
 if here.exists():  # run from a clone: use the files beside this one
@@ -22,18 +29,25 @@ if here.exists():  # run from a clone: use the files beside this one
     MENU = f"uv run --no-project {shlex.quote(str(Path(__file__)))}"
 else:  # run from GitHub: fetch choose.py once
     choose_path = Path(tempfile.gettempdir()) / "menu-choose.py"
-    choose_path.write_bytes(urllib.request.urlopen(REPO + "choose.py", timeout=30).read())
+    choose_path.write_bytes(fetch("choose.py"))
     CHOOSE, MENU = f"uv run --no-project {REPO}choose.py", f"uv run --no-project {REPO}menu.py"
+    if args.key:  # reopening needs the key too; commands shown on the page never include it
+        keyed = REPO.replace("https://", f"https://x-access-token:{args.key}@")
+        MENU = f"uv run --no-project {keyed}menu.py --key {shlex.quote(args.key)}"
 # The local-file test needs a picture on this machine: the clone's own copy, or one fetched once.
 local_diagram = Path(__file__).with_name("assets") / "how-it-works.svg"
 if not local_diagram.exists():
     local_diagram = Path(tempfile.gettempdir()) / "menu-how-it-works.svg"
-    local_diagram.write_bytes(urllib.request.urlopen(REPO + "assets/how-it-works.svg", timeout=30).read())
+    local_diagram.write_bytes(fetch("assets/how-it-works.svg"))
 # The flowchart page this menu serves at /flowchart: the clone's own copy, or one fetched once from GitHub.
 flowchart = Path(__file__).with_name("assets") / "greenfield-flowchart.html"
 if not flowchart.exists():
     flowchart = Path(tempfile.gettempdir()) / "menu-greenfield-flowchart.html"
-    flowchart.write_bytes(urllib.request.urlopen(REPO + "assets/greenfield-flowchart.html", timeout=30).read())
+    flowchart.write_bytes(fetch("assets/greenfield-flowchart.html"))
+# A browser can't send the key, so with --key the pictures come through this menu at /asset/<name>.
+ASSET = "__MENU__/asset/" if args.key else REPO + "assets/"
+ASSET_TYPES = {".png": "image/png", ".gif": "image/gif", ".svg": "image/svg+xml"}
+asset_cache = {}
 # Drawn by the LLM for the "drawn by the LLM" test: an agent would write this SVG itself.
 CHART = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" font-family="Helvetica, Arial, sans-serif">'
          '<text x="10" y="20" font-size="14" fill="#8b96a5">Sign-ups this week</text>'
@@ -72,14 +86,14 @@ TESTS = [
              "repo, and the browser loads it like any picture on a web page. Nothing is installed; the picture just "
              "needs an internet connection.",
          todo="Look at the screenshot, then answer.",
-         args=["--timeout", "3600", "--image", REPO + "assets/chat-and-page.png",
+         args=["--timeout", "3600", "--image", ASSET + "chat-and-page.png",
                "--question", "After you answer, which window do you switch back to?", "The chat", "The browser", "Neither"]),
     dict(id="gif", group="Rich content", name="Animated GIF",
          proves="A short looping clip can show a task step by step, the way training material does.",
          how="An animated GIF loads exactly like the PNG: a web address passed with --image. The browser plays the "
              "loop on its own; no player or extra code is needed.",
          todo="Watch the loop once or twice, then answer.",
-         args=["--timeout", "3600", "--image", REPO + "assets/flow.gif",
+         args=["--timeout", "3600", "--image", ASSET + "flow.gif",
                "--question", "What do you do after you answer on the page?",
                "Switch back to the chat", "Wait for the page to move on", "Reload the page"]),
     dict(id="svg", group="Rich content", name="Vector diagram (SVG)",
@@ -89,7 +103,7 @@ TESTS = [
              "Nothing goes to a cloud service. This test page is a wrapper around choose.py: it runs the same script "
              "and shows its page in the frame below.",
          todo="Follow the diagram from left to right, then answer.",
-         args=["--timeout", "3600", "--image", REPO + "assets/how-it-works.svg",
+         args=["--timeout", "3600", "--image", ASSET + "how-it-works.svg",
                "--question", "Which part runs on your own machine?",
                "choose.py's small web server", "A cloud service", "GitHub"]),
     dict(id="svg-anim", group="Rich content", name="Animated diagram (SVG)",
@@ -99,7 +113,7 @@ TESTS = [
              "that printed text, which is how your answer reaches the chat. The animation is built into the SVG file "
              "itself, so no scripts run.",
          todo="Watch the answer travel, then answer.",
-         args=["--timeout", "3600", "--image", REPO + "assets/answer-path.svg",
+         args=["--timeout", "3600", "--image", ASSET + "answer-path.svg",
                "--question", "How does your answer reach the chat?",
                "choose.py prints it for the agent", "The page emails it", "You type it into the chat"]),
     dict(id="local", group="Rich content", name="Picture from a local file",
@@ -485,6 +499,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if state.get("status") == "done":
                 delivered.set()
             self.reply(200, json.dumps(state).encode(), "application/json")
+        elif path.startswith("/asset/") and Path(path).suffix in ASSET_TYPES and "/" not in path[7:]:
+            name = path[7:]
+            try:
+                if name not in asset_cache:
+                    asset_cache[name] = fetch("assets/" + name)
+                self.reply(200, asset_cache[name], ASSET_TYPES[Path(path).suffix])
+            except OSError:
+                self.reply(404)
         elif path == "/flowchart":  # served from here, since GitHub serves HTML as plain text
             self.reply(200, flowchart.read_bytes())
         elif path == "/test":  # the real choose.py page, restyled

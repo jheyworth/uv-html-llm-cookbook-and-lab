@@ -24,7 +24,7 @@ parser.add_argument("--other", action="store_true", help="add a free-text 'Other
 parser.add_argument("--load-wait", type=float, default=30,
                     help="seconds for the browser to load the page before the copy-prompt page also opens (default 30)")
 parser.add_argument("--fallback", action="store_true", help="go straight to the copy-prompt page")
-parser.add_argument("--image", help="picture above the question: an https:// address, a local file "
+parser.add_argument("--image", help="picture above the question: an https:// (or http://localhost) address, a local file "
                     "(PNG, JPG, GIF, SVG, WebP) or SVG text starting with <svg")
 parser.add_argument("--video", help="YouTube video ID to play above the question")
 parser.add_argument("--page", help="https:// web page (or one served on this machine at http://localhost) "
@@ -39,6 +39,9 @@ def data_uri(mime, data):
     return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
 
+LOCAL_URL = re.compile(r"http://(localhost|127\.0\.0\.1)(:\d+)?/")  # a page or picture served on this machine
+
+
 def make_media():
     # Local files and SVG text go into the page as data, so no extra request is needed.
     # Everything is shown as <img> or a sandboxed frame: nothing passed in can run on this page.
@@ -47,7 +50,7 @@ def make_media():
         src = args.image.strip()
         if src.startswith("<svg"):
             src = data_uri("image/svg+xml", src.encode())
-        elif not src.startswith("https://"):
+        elif not (src.startswith("https://") or LOCAL_URL.match(src)):
             path = Path(src).expanduser()
             if path.suffix.lower() not in TYPES or not path.is_file():
                 parser.error(f"--image: no PNG, JPG, GIF, SVG or WebP file at {src}")
@@ -60,7 +63,7 @@ def make_media():
                      'title="Video" allow="encrypted-media; picture-in-picture; fullscreen" '
                      'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>')
     if args.page:
-        if not re.match(r"https://|http://(localhost|127\.0\.0\.1)(:\d+)?/", args.page):
+        if not (args.page.startswith("https://") or LOCAL_URL.match(args.page)):
             parser.error("--page: give an https:// address, or http://localhost:PORT/... for a page on this machine")
         parts.append(f'<iframe class="media page" src="{html.escape(args.page)}" title="Web page" '
                      'sandbox="allow-scripts allow-same-origin" allow="clipboard-write"></iframe>')
