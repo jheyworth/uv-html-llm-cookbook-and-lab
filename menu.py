@@ -49,6 +49,21 @@ TESTS = [
          args=["--fallback", "--question", "Which day suits you?", "Monday", "Wednesday", "Friday"]),
     dict(id="timeout", name="Nobody answers", todo="Don't click anything. It gives up after 10 seconds.",
          args=["--timeout", "10", "--question", "Leave this unanswered", "A", "B"]),
+    dict(id="video", group="Rich content", name="YouTube video",
+         todo="A YouTube video plays above the question. Play a few seconds, then pick an answer.",
+         args=["--timeout", "3600", "--video", "Cf19iCXTzII", "--question", "What is this episode about?",
+               "Running BMad in teams", "Installing Python", "Cooking pasta"]),
+    dict(id="blog", group="Rich content", name="Blog post",
+         todo="A blog post opens in a frame above the question. Scroll it, then pick an answer.",
+         args=["--timeout", "3600", "--page",
+               "https://blog.bmadcode.com/blog/your-ai-should-be-arguing-with-you-and-making-you-sweat/",
+               "--question", "What does the post say your AI should do?",
+               "Argue with you", "Agree with everything", "Stay quiet"]),
+    dict(id="docs", group="Rich content", name="Docs page",
+         todo="A BMad docs page opens in a frame above the question. Scroll it, then pick an answer.",
+         args=["--timeout", "3600", "--page", "https://docs.bmad-method.org/plan/set-up-the-ticket-tree/",
+               "--question", "What does this page help you set up?",
+               "The ticket tree", "A web server", "A YouTube channel"]),
 ]
 BY_ID = {t["id"]: t for t in TESTS}
 TOKEN = secrets.token_hex(4)  # tells an old tab that a new menu has started
@@ -124,7 +139,7 @@ SHELL = """<!doctype html><html lang="en"><meta charset="utf-8">
 #theme{padding:6px 12px;font-size:13px;cursor:pointer}
 .wrap{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 71px)}
 nav{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px}
-nav .eyebrow{padding:0 10px 6px}
+nav .eyebrow{padding:0 10px 6px} nav .group{padding-top:20px}
 nav button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:10px 12px;font-size:15px;
 cursor:pointer;background:transparent;border:1px solid transparent;border-left:3px solid transparent}
 nav button:hover:not(:disabled){background:var(--panel);border-color:var(--line)}
@@ -153,7 +168,7 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 </style>
 <header class="top"><div><div class="eyebrow">uv-html-llm cookbook &amp; lab</div><h1>LLM + HTML GUI Integration: Proof of Concept</h1></div>
 <button id="theme" type="button">Light</button></header>
-<div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Tests</div></nav>
+<div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Question types</div></nav>
 <main id="main"><section class="welcome"><div class="eyebrow">uv-html-llm cookbook &amp; lab</div>
 <h2>Welcome to the LLM + HTML GUI Integration Proof of Concept</h2>
 <p class="lead">This page shows how your LLM chat can ask you a question here in your browser, instead of in plain chat text.</p>
@@ -172,7 +187,9 @@ const nav=document.querySelector('nav'), main=document.getElementById('main');
 // Done marks are shared between tabs; a fresh start (not a reopen) clears them.
 let ticks={}; try{ if(!REOPEN) localStorage.removeItem('menu-ticks'); ticks=JSON.parse(localStorage.getItem('menu-ticks')||'{}'); }catch(e){}
 let current=null, finished=false;
+let group='';
 for (const t of TESTS) {
+  if (t.group && t.group!==group) { group=t.group; nav.appendChild(el('div','eyebrow group',group)); }
   const b=document.createElement('button'); b.type='button'; b.dataset.id=t.id;
   b.innerHTML='<span></span><span class="tick"></span>'; b.firstChild.textContent=t.name;
   if (ticks[t.id]) b.lastChild.textContent='done';
@@ -187,7 +204,8 @@ async function start(t){
   await fetch('/start/'+t.id,{method:'POST'});
   if (current!==t) return;
   const f=el('iframe'); f.title=t.name+' test page'; f.src='/test?'+Date.now();
-  f.setAttribute('allow','clipboard-write');
+  f.setAttribute('allow','clipboard-write; encrypted-media; picture-in-picture; fullscreen');
+  f.onload=()=>{ try{ f.style.height=Math.max(480, f.contentDocument.documentElement.scrollHeight+24)+'px'; }catch(e){} };
   main.replaceChildren(el('h2',null,t.name), el('p','todo',t.todo), f, el('p','cmd',CHOOSE+' '+t.shown));
   if (t.copy) { const b=el('button','primary',"I've copied it"); b.type='button';
     b.onclick=()=>fetch('/copied',{method:'POST'}); main.appendChild(b); }
@@ -227,7 +245,7 @@ tb.onclick=()=>setTheme(document.documentElement.dataset.theme!=='light');
 </script></html>"""
 SHELL = (SHELL.replace("__THEME__", THEME).replace("__REOPEN__", json.dumps(args.reopen)).replace("__TOKEN__", json.dumps(TOKEN)).replace("__CHOOSE__", json.dumps(CHOOSE))
          .replace("__TESTS__", json.dumps([{"id": t["id"], "name": t["name"], "todo": t["todo"], "copy": t.get("copy", False),
-                                            "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
+                                            "group": t.get("group", ""), "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
 
 
 class Handler(http.server.BaseHTTPRequestHandler):

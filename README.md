@@ -53,6 +53,9 @@ If the browser can't reach the script, for example on a locked-down work laptop,
 | `--question "Which plan?"` | Text shown above the buttons. Default: "Pick one". |
 | `--multi` | Tick boxes and a Submit button; the answer is a list, such as `["Plan A", "Plan C"]`. |
 | `--other` | Adds a free-text "Other..." box. |
+| `--image SRC` | A picture above the question: an `https://` address, a local PNG, JPG, GIF, SVG or WebP file, or SVG text starting with `<svg`. Local files and SVG text are put into the page itself. |
+| `--video ID` | Plays a YouTube video above the question, by its 11-character ID (privacy-enhanced youtube-nocookie.com player). |
+| `--page URL` | Shows an `https://` web page above the question, in a sandboxed frame. Sites that block framing will show as blank. |
 | `--timeout 600` | Seconds to wait for an answer. Default: 300. |
 | `--load-wait 30` | Seconds for the browser to load the page before the copy-prompt page also opens. Default: 30. |
 | `--fallback` | Go straight to the copy-prompt page. |

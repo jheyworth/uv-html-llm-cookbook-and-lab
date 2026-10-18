@@ -1,6 +1,8 @@
 # Usage: uv run choose.py [--question TEXT] [--timeout SECONDS] [--multi] [--other]
+#                         [--image SRC] [--video YOUTUBE_ID] [--page HTTPS_URL]
 #                         [--load-wait SECONDS] [--fallback] "Option A" "Option B" "Option C"
-# Serves a page with one button per option, waits for a click,
+# Serves a page with one button per option (and optionally a picture, video or
+# web page above the question), waits for a click,
 # prints the chosen option to stdout, then exits.
 #
 # Exit codes:
@@ -11,7 +13,7 @@
 #      into the chat instead. Happens when no local port can be opened, when
 #      the browser has not loaded the page within --load-wait (default 30 s)
 #      and nobody answers before the timeout, or with --fallback.
-import argparse, html, http.server, json, sys, tempfile, threading, webbrowser
+import argparse, base64, html, http.server, json, re, sys, tempfile, threading, webbrowser
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -22,8 +24,49 @@ parser.add_argument("--other", action="store_true", help="add a free-text 'Other
 parser.add_argument("--load-wait", type=float, default=30,
                     help="seconds for the browser to load the page before the copy-prompt page also opens (default 30)")
 parser.add_argument("--fallback", action="store_true", help="go straight to the copy-prompt page")
+parser.add_argument("--image", help="picture above the question: an https:// address, a local file "
+                    "(PNG, JPG, GIF, SVG, WebP) or SVG text starting with <svg")
+parser.add_argument("--video", help="YouTube video ID to play above the question")
+parser.add_argument("--page", help="https:// web page to show above the question, in a sandboxed frame")
 parser.add_argument("options", nargs="*")
 args = parser.parse_args()
+TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+         ".svg": "image/svg+xml", ".webp": "image/webp"}
+
+
+def data_uri(mime, data):
+    return f"data:{mime};base64,{base64.b64encode(data).decode()}"
+
+
+def make_media():
+    # Local files and SVG text go into the page as data, so no extra request is needed.
+    # Everything is shown as <img> or a sandboxed frame: nothing passed in can run on this page.
+    parts = []
+    if args.image:
+        src = args.image.strip()
+        if src.startswith("<svg"):
+            src = data_uri("image/svg+xml", src.encode())
+        elif not src.startswith("https://"):
+            path = Path(src).expanduser()
+            if path.suffix.lower() not in TYPES or not path.is_file():
+                parser.error(f"--image: no PNG, JPG, GIF, SVG or WebP file at {src}")
+            src = data_uri(TYPES[path.suffix.lower()], path.read_bytes())
+        parts.append(f'<img class="media" src="{html.escape(src)}" alt="">')
+    if args.video:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", args.video):
+            parser.error("--video: give the 11-character YouTube video ID, e.g. Cf19iCXTzII")
+        parts.append(f'<iframe class="media video" src="https://www.youtube-nocookie.com/embed/{args.video}" '
+                     'title="Video" allow="encrypted-media; picture-in-picture; fullscreen" '
+                     'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>')
+    if args.page:
+        if not args.page.startswith("https://"):
+            parser.error("--page: give an https:// address")
+        parts.append(f'<iframe class="media page" src="{html.escape(args.page)}" title="Web page" '
+                     'sandbox="allow-scripts allow-same-origin"></iframe>')
+    return "".join(parts)
+
+
+MEDIA = make_media()
 options = args.options or ["Yes", "No"]
 choice = {}
 loaded = threading.Event()
@@ -51,12 +94,14 @@ def make_page(copy_mode):
     return f"""<!doctype html><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Choose</title>
-<style>body{{font-family:sans-serif;max-width:420px;margin:40px auto;padding:0 16px}}
+<style>body{{font-family:sans-serif;max-width:{720 if MEDIA else 420}px;margin:40px auto;padding:0 16px}}
+.media{{display:block;width:100%;margin:0 0 20px;border:0;border-radius:4px}}
+img.media{{height:auto}} .video{{aspect-ratio:16/9}} .page{{height:560px;background:#fff}}
 button{{display:block;width:100%;padding:14px;margin:10px 0;font-size:17px;cursor:pointer}}
 label{{display:block;padding:12px;margin:8px 0;font-size:17px;border:1px solid #ccc;border-radius:6px;cursor:pointer}}
 #other{{display:block;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;font-size:17px}}
 textarea{{width:100%;box-sizing:border-box;height:90px;font-size:15px}}</style>
-<h2>{html.escape(args.question)}</h2>{note}{buttons}<p id="msg"></p>
+{MEDIA}<h2>{html.escape(args.question)}</h2>{note}{buttons}<p id="msg"></p>
 <script>
 const COPY_MODE={json.dumps(copy_mode)}, QUESTION={json.dumps(args.question)};
 async function deliver(body, shown){{
