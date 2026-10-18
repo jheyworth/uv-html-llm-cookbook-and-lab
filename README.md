@@ -16,10 +16,10 @@ The tests come in four groups: **Question types** (the kinds of question choose.
 
 `menu.py` options: `--port` (default 8764), `--timeout` (seconds before the page stops, default 3600) and `--key` (a GitHub token, for when the repo is private).
 
-**From a private repo:** put a read-only GitHub token in the link and pass it once more as `--key`, so the script's own downloads can use it:
+**From a private repo:** put a read-only GitHub token in place of `<TOKEN>`, once. The prompt uses it both to download the script and, as `--key`, for the script's own downloads:
 
 ```text
-Run "uv run --no-project https://x-access-token:<TOKEN>@raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py --key <TOKEN>" in the background and do what it prints.
+Run this in the background and do what it prints: K='<TOKEN>'; uv run --no-project "https://x-access-token:$K@raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" --key "$K"
 ```
 
 The pictures then come through the test page from your machine, because a browser can't send the token. Use a fine-grained token: read-only, this repo only, short expiry.
