@@ -10,6 +10,8 @@ from pathlib import Path
 REPO = "https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/"
 parser = argparse.ArgumentParser()
 parser.add_argument("--timeout", type=float, default=3600, help="seconds before the page stops (default 3600)")
+parser.add_argument("--reopen", action="store_true",
+                    help="wait up to 2 minutes for the open tab to reconnect before opening a new one")
 args = parser.parse_args()
 
 here = Path(__file__).with_name("choose.py")
@@ -181,7 +183,11 @@ async function poll(){
   else p.append(el('div','eyebrow','Result'), el('div','big','Nothing came back: exit code '+s.code+' ('+s.meaning+').'));
   p.append(el('p',null,'Switch back to Claude Code to see this test run. It will ask if you want to come back here; this page will then refresh by itself.'));
   main.replaceChildren(el('h2',null,current.name), p);
-  setInterval(async()=>{ try{ const r=await (await fetch('/ping?from='+TOKEN)).text(); if(r!==TOKEN) location.reload(); }catch(e){} }, 500);
+  // Background tabs run timers slowly, so also check the moment the tab is looked at again.
+  const ping=async()=>{ try{ const r=await (await fetch('/ping?from='+TOKEN)).text(); if(r!==TOKEN) location.reload(); }catch(e){} };
+  setInterval(ping, 500);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) ping(); });
+  window.addEventListener('focus', ping);
 }
 setInterval(poll, 500);
 const tb=document.getElementById('theme');
@@ -250,7 +256,9 @@ url = f"http://localhost:{server.server_address[1]}"
 
 
 def open_unless_reconnected():
-    if reconnected.wait(1.5):
+    if args.reopen:
+        print(f"Test page ready at {url}. Waiting up to 2 minutes for the open tab to reconnect.", file=sys.stderr)
+    if reconnected.wait(120 if args.reopen else 1.5):
         print(f"The open test page reconnected at {url}", file=sys.stderr)
     else:
         print(f"Opening the test page at {url}", file=sys.stderr)
@@ -277,4 +285,6 @@ if t.get("copy"):
     print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to; "
           "then show what they pasted.")
 print(f'Tell them that in one line. Then ask: "Go back to the test page?" If they say yes, '
-      f"run this in the background and do what it prints:\n{MENU}")
+      f"run this in the background and do what it prints:\n{MENU} --reopen\n"
+      "Then tell them to switch to the test page tab in their browser: it refreshes by itself. "
+      "If they closed that tab, a new one opens within 2 minutes.")
