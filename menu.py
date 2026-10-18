@@ -258,6 +258,7 @@ lock = threading.Lock()
 cur = {"test": None, "proc": None, "port": None, "copy_page": None}
 state = {"status": "idle"}
 delivered = threading.Event()
+page_loaded = []  # set once a test page tab has loaded; an older tab waits for this before it closes
 
 # Colours and type from bmadcode.com (dark bands), with its light colours for the toggle.
 THEME = """<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -496,8 +497,15 @@ async function poll(){
   else p.append(el('div','eyebrow','Result'), el('div','big','Nothing came back: exit code '+s.code+' ('+s.meaning+').'));
   p.append(el('p',null,'Switch back to your LLM chat session to see this test run. It will ask if you want to come back; if you do, a new test page opens and this tab closes.'));
   main.replaceChildren(el('h2',null,current.name), p);
-  // When a newer test page starts, this tab retires: it closes, or greys out if the browser won't allow that.
-  const ping=async()=>{ try{ const r=await (await fetch('/ping')).text(); if(r!==TOKEN) retire(); }catch(e){} };
+  // When a newer test page starts, this tab retires once the new tab has loaded: it closes, or greys out if the
+  // browser won't allow that. If no new tab loads within 5 seconds, this tab reloads as the new page instead.
+  let seen=0;
+  const ping=async()=>{ try{ const [tok,loaded]=(await (await fetch('/ping')).text()).split(' ');
+    if (tok===TOKEN) return;
+    if (loaded) return retire();
+    seen=seen||Date.now();
+    if (Date.now()-seen>5000) { clearInterval(timer); try{sessionStorage.setItem('menu-reused','1')}catch(e){} location.reload(); }
+  }catch(e){} };
   const timer=setInterval(ping, 1000);
   document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) ping(); });
   function retire(){
@@ -508,6 +516,9 @@ async function poll(){
   }
 }
 setInterval(poll, 500);
+// Tell the menu this page has loaded, so an older tab knows it can close.
+let reused=false; try{ reused=!!sessionStorage.getItem('menu-reused'); sessionStorage.removeItem('menu-reused'); }catch(e){}
+fetch('/loaded'+(reused?'?reused=1':''),{method:'POST'});
 if (START) start(TESTS.find(t=>t.id===START));
 const tb=document.getElementById('theme');
 const setTheme=l=>{ document.documentElement.dataset.theme=l?'light':''; tb.textContent=l?'Dark':'Light';
@@ -533,7 +544,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.partition("?")[0]
         if path == "/ping":
-            self.reply(200, TOKEN.encode(), "text/plain")
+            self.reply(200, (TOKEN + (" loaded" if page_loaded else "")).encode(), "text/plain")
         elif path == "/state":
             if state.get("status") == "done":
                 delivered.set()
@@ -562,7 +573,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
         path = self.path.strip("/")
-        if path.startswith("start/") and path[6:] in BY_ID and state.get("status") != "done":
+        if path.partition("?")[0] == "loaded" and not page_loaded:
+            page_loaded.append(path)
+            print("Test page: " + ("the old tab reloaded as the new page, since no new tab loaded within 5 seconds."
+                                   if "reused" in path else "opened in a new tab."), file=sys.stderr)
+        elif path.startswith("start/") and path[6:] in BY_ID and state.get("status") != "done":
             run_test(BY_ID[path[6:]])
         elif path == "choose" and cur["port"]:  # the page's answer, passed on to choose.py
             req = urllib.request.Request(f"http://127.0.0.1:{cur['port']}/choose", data=body, method="POST")
