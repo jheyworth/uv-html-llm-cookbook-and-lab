@@ -24,6 +24,18 @@ else:  # run from GitHub: fetch choose.py once
     choose_path = Path(tempfile.gettempdir()) / "menu-choose.py"
     choose_path.write_bytes(urllib.request.urlopen(REPO + "choose.py", timeout=30).read())
     CHOOSE, MENU = f"uv run --no-project {REPO}choose.py", f"uv run --no-project {REPO}menu.py"
+# The local-file test needs a picture on this machine: the clone's own copy, or one fetched once.
+local_diagram = Path(__file__).with_name("assets") / "how-it-works.svg"
+if not local_diagram.exists():
+    local_diagram = Path(tempfile.gettempdir()) / "menu-how-it-works.svg"
+    local_diagram.write_bytes(urllib.request.urlopen(REPO + "assets/how-it-works.svg", timeout=30).read())
+# Drawn by the LLM for the "drawn by the LLM" test: an agent would write this SVG itself.
+CHART = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" font-family="Helvetica, Arial, sans-serif">'
+         '<text x="10" y="20" font-size="14" fill="#8b96a5">Sign-ups this week</text>'
+         '<rect x="40" y="110" width="70" height="60" fill="#8b96a5"/><rect x="145" y="50" width="70" height="120" fill="#5fd38d"/>'
+         '<rect x="250" y="80" width="70" height="90" fill="#8b96a5"/><path d="M20 170H340" stroke="#8b96a5"/>'
+         '<g font-size="13" fill="#8b96a5" text-anchor="middle"><text x="75" y="190">Tuesday</text>'
+         '<text x="180" y="190">Wednesday</text><text x="285" y="190">Thursday</text></g></svg>')
 
 MEANING = {0: "answered", 2: "command typed wrong", 3: "nobody answered in time",
            4: "switched to the copy-prompt page"}
@@ -49,21 +61,115 @@ TESTS = [
          args=["--fallback", "--question", "Which day suits you?", "Monday", "Wednesday", "Friday"]),
     dict(id="timeout", name="Nobody answers", todo="Don't click anything. It gives up after 10 seconds.",
          args=["--timeout", "10", "--question", "Leave this unanswered", "A", "B"]),
+    dict(id="png", group="Rich content", name="Picture (PNG)",
+         proves="A question can come with a real screenshot.",
+         how="The agent passes a web address with --image. The address points to a PNG in this project's GitHub "
+             "repo, and the browser loads it like any picture on a web page. Nothing is installed; the picture just "
+             "needs an internet connection.",
+         todo="Look at the screenshot, then answer.",
+         args=["--timeout", "3600", "--image", REPO + "assets/chat-and-page.png",
+               "--question", "After you answer, which window do you switch back to?", "The chat", "The browser", "Neither"]),
+    dict(id="gif", group="Rich content", name="Animated GIF",
+         proves="A short looping clip can show a task step by step, the way training material does.",
+         how="An animated GIF loads exactly like the PNG: a web address passed with --image. The browser plays the "
+             "loop on its own; no player or extra code is needed.",
+         todo="Watch the loop once or twice, then answer.",
+         args=["--timeout", "3600", "--image", REPO + "assets/flow.gif",
+               "--question", "What do you do after you answer on the page?",
+               "Switch back to the chat", "Wait for the page to move on", "Reload the page"]),
+    dict(id="svg", group="Rich content", name="Vector diagram (SVG)",
+         proves="A diagram can explain how something is built, and stays sharp at any size.",
+         how="The agent runs uv run choose.py with a question and the options. choose.py starts a small web server "
+             "on your own machine (address 127.0.0.1, port 8765 or a free one) and opens this page in your browser. "
+             "Nothing goes to a cloud service. This test page is a wrapper around choose.py: it runs the same script "
+             "and shows its page in the frame below.",
+         todo="Follow the diagram from left to right, then answer.",
+         args=["--timeout", "3600", "--image", REPO + "assets/how-it-works.svg",
+               "--question", "Which part runs on your own machine?",
+               "choose.py's small web server", "A cloud service", "GitHub"]),
+    dict(id="svg-anim", group="Rich content", name="Animated diagram (SVG)",
+         proves="Movement can show the order things happen in.",
+         how="When you click an answer, the page sends it to choose.py on your machine. choose.py prints the answer "
+             "as plain text and stops, with an exit code that says how it ended (0 means answered). The agent reads "
+             "that printed text, which is how your answer reaches the chat. The animation is built into the SVG file "
+             "itself, so no scripts run.",
+         todo="Watch the answer travel, then answer.",
+         args=["--timeout", "3600", "--image", REPO + "assets/answer-path.svg",
+               "--question", "How does your answer reach the chat?",
+               "choose.py prints it for the agent", "The page emails it", "You type it into the chat"]),
+    dict(id="local", group="Rich content", name="Picture from a local file",
+         proves="The agent can use pictures from your own project, with no internet needed for the picture.",
+         how="The agent passes a file path with --image instead of a web address. choose.py reads the file and puts "
+             "the picture into the page itself, so the browser needs nothing else. A GitHub link, by contrast, needs "
+             "the internet, and GitHub can take up to 5 minutes to show a changed picture.",
+         todo="This is the same diagram as the vector test, loaded from a file on your machine. Answer when ready.",
+         args=["--timeout", "3600", "--image", str(local_diagram),
+               "--question", "Which kind of picture still shows without the internet?",
+               "A local file", "A GitHub link", "A YouTube video"]),
+    dict(id="drawn", group="Rich content", name="Drawn by the LLM",
+         proves="The LLM can draw a picture to fit the question, on the spot.",
+         how="The agent writes the SVG itself and passes the text with --image. choose.py shows it as a picture, "
+             "never as part of the page, so even if the drawing contained code it could not run. This only works for "
+             "vector drawings, not photos.",
+         todo="Read the chart, then answer.",
+         args=["--timeout", "3600", "--image", CHART, "--question", "Which bar is tallest?",
+               "Tuesday", "Wednesday", "Thursday"]),
     dict(id="video", group="Rich content", name="YouTube video",
-         todo="A YouTube video plays above the question. Play a few seconds, then pick an answer.",
+         proves="A question can come with a full video walkthrough.",
+         how="The agent passes only the video's ID with --video, never the page code for a player. choose.py builds "
+             "the player itself, using youtube-nocookie.com, YouTube's privacy-enhanced player. It needs the "
+             "internet, and YouTube shows its own branding.",
+         todo="Play a few seconds, then answer.",
          args=["--timeout", "3600", "--video", "Cf19iCXTzII", "--question", "What is this episode about?",
                "Running BMad in teams", "Installing Python", "Cooking pasta"]),
     dict(id="blog", group="Rich content", name="Blog post",
-         todo="A blog post opens in a frame above the question. Scroll it, then pick an answer.",
+         proves="A question can come with reading material, here a BMad Code blog post.",
+         how="The agent passes an https:// address with --page. choose.py shows the page in a sandboxed frame: the "
+             "page can run and scroll, but cannot take over this page. Some sites block being shown in a frame; "
+             "those show up blank.",
+         todo="Scroll the post, then answer.",
          args=["--timeout", "3600", "--page",
                "https://blog.bmadcode.com/blog/your-ai-should-be-arguing-with-you-and-making-you-sweat/",
                "--question", "What does the post say your AI should do?",
                "Argue with you", "Agree with everything", "Stay quiet"]),
     dict(id="docs", group="Rich content", name="Docs page",
-         todo="A BMad docs page opens in a frame above the question. Scroll it, then pick an answer.",
+         proves="Integrated help: the agent opens the exact docs page you need, right next to the question.",
+         how="The same --page option as the blog post test, pointing at a page of the BMad Method docs. The docs "
+             "stay live, so the help is always the current version.",
+         todo="Scroll the page, then answer.",
          args=["--timeout", "3600", "--page", "https://docs.bmad-method.org/plan/set-up-the-ticket-tree/",
                "--question", "What does this page help you set up?",
                "The ticket tree", "A web server", "A YouTube channel"]),
+    dict(id="bmad-install", group="BMad", name="1. Install BMad",
+         proves="The page asks; your LLM session does the work. Here it installs BMad for you.",
+         how="Click Yes. Your session runs this command in your project folder and shows you the result.",
+         run="npx skills add bmad-code-org/BMAD-METHOD -y",
+         todo="Click Yes, then switch back to your session and watch it install.",
+         yes="Yes, install BMad here",
+         act="Run this command in the session's project folder, in the foreground, and show the person the last "
+             "lines of its output: `npx skills add bmad-code-org/BMAD-METHOD -y`. Before running it, check the folder: "
+             "if it holds anything other than this session's own files, ask the person to confirm first. If the "
+             "command stops to ask a question you can't answer, stop it, show the person the question, and offer to "
+             "run it again with their answer.",
+         args=["--timeout", "3600", "--question", "Install BMad in this project folder now?", "Yes, install BMad here", "Not now"]),
+    dict(id="bmad-setup", group="BMad", name="2. Set up BMad",
+         proves="One step leads to the next: the page walks you through it, and the session does each step.",
+         how="Click Yes. Your session runs bmad setup, which gets the folder ready for BMad's skills.",
+         run="bmad setup",
+         todo="Click Yes, then switch back to your session.",
+         yes="Yes, run bmad setup",
+         act="Use the bmad skill to run bmad setup in this project, and show the person what it did. " + "If you can't find the skill, tell the person that skills added during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again.",
+         args=["--timeout", "3600", "--question", "Run bmad setup now?", "Yes, run bmad setup", "Not now"]),
+    dict(id="bmad-po", group="BMad", name="3. Get help on the PO agent",
+         proves="You can ask any BMad skill to explain itself, in plain words, right after its name.",
+         how="Click Yes. Your session asks Sofia, the PO agent, for her FAQ and shows you her answer. "
+             "Put any other skill's name in place of bmad-agent-po to get help on that one.",
+         run="/bmad-agent-po please show me a FAQ on what the PO Agent can do",
+         todo="Click Yes, then switch back to your session and read Sofia's answer.",
+         yes="Yes, ask Sofia",
+         act="Run the bmad-agent-po skill with this request: `please show me a FAQ on what the PO Agent can do`. "
+             "Show the person her answer. " + "If you can't find the skill, tell the person that skills added during a session may only load in a new one, so they should open a new session in this folder and paste the menu prompt again.",
+         args=["--timeout", "3600", "--question", "Ask Sofia, the PO agent, for her FAQ now?", "Yes, ask Sofia", "Not now"]),
 ]
 BY_ID = {t["id"]: t for t in TESTS}
 TOKEN = secrets.token_hex(4)  # tells an old tab that a new menu has started
@@ -88,6 +194,16 @@ button:hover:not(:disabled){border-color:var(--accent)}
 button:disabled{opacity:.5;cursor:default}
 button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 #go{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+/* Raised answer buttons (option D): soft blue border, a deeper bottom edge, a shadow; they press down on click. */
+:root{--btn-top:#2b313a;--btn-bot:#1e232a;--btn-line:#5b7fd6;--btn-edge:#2f4a8f;--btn-shadow:rgba(0,0,0,.55)}
+:root[data-theme="light"]{--btn-top:#ffffff;--btn-bot:#eef1f5;--btn-line:#5b7fd6;--btn-edge:#3f63bf;--btn-shadow:rgba(20,30,50,.18)}
+body>button,#go,.primary{background:linear-gradient(var(--btn-top),var(--btn-bot));color:var(--fg);
+border:1.5px solid var(--btn-line);border-bottom:5px solid var(--btn-edge);border-radius:6px;
+box-shadow:0 4px 10px var(--btn-shadow);transition:transform .1s,box-shadow .1s,border-bottom-width .1s}
+body>button:hover:not(:disabled),#go:hover:not(:disabled),.primary:hover{transform:translateY(-1px);
+box-shadow:0 6px 14px var(--btn-shadow);border-color:var(--btn-line);border-bottom-color:var(--btn-edge)}
+body>button:active:not(:disabled),#go:active:not(:disabled),.primary:active{transform:translateY(3px);
+border-bottom-width:2px;box-shadow:0 1px 3px var(--btn-shadow)}
 label{border:1px solid var(--line-2)!important;border-radius:2px!important;background:var(--panel)}
 input,textarea{background:var(--panel);color:var(--fg);border:1px solid var(--line-2)}
 </style>
@@ -139,7 +255,7 @@ SHELL = """<!doctype html><html lang="en"><meta charset="utf-8">
 #theme{padding:6px 12px;font-size:13px;cursor:pointer}
 .wrap{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 71px)}
 nav{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px}
-nav .eyebrow{padding:0 10px 6px} nav .group{padding-top:20px}
+nav .eyebrow{font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--fg);background:var(--line);padding:8px 10px;margin:0 -12px 6px} nav .group{margin-top:18px}
 nav button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:10px 12px;font-size:15px;
 cursor:pointer;background:transparent;border:1px solid transparent;border-left:3px solid transparent}
 nav button:hover:not(:disabled){background:var(--panel);border-color:var(--line)}
@@ -152,7 +268,7 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted-2);margin-top:12px;overflow-wrap:anywhere}
 .big{font-size:22px;font-weight:600;margin:8px 0 16px;overflow-wrap:anywhere}
 .panel{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:2px;background:var(--panel);padding:20px;max-width:640px}
-.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);padding:10px 18px;font-size:15px;cursor:pointer;margin-top:16px}
+.primary{padding:10px 18px;font-size:15px;cursor:pointer;margin-top:16px}
 .welcome{max-width:720px}
 .welcome h2{font-size:clamp(26px,3.2vw,34px);line-height:1.2;margin:6px 0 10px}
 .lead{margin:0 0 14px;font-size:20px;line-height:1.5;font-weight:500;letter-spacing:-.005em;max-width:34em;text-wrap:pretty}
@@ -160,6 +276,13 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 .body em{font-style:italic;color:var(--fg)}
 .body strong{font-weight:600;color:var(--fg)}
 .welcome .body:last-of-type{margin-bottom:32px}
+.writeup{max-width:720px;margin-bottom:20px} .writeup h2{margin-bottom:8px}
+.writeup .lead{margin-bottom:18px} .writeup .eyebrow{margin-bottom:6px}
+.run{margin:14px 0 0;padding:12px 14px;font-family:var(--mono);font-size:14px;background:var(--panel);
+border:1px solid var(--line-2);border-radius:2px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}
+.before{margin:0 0 18px;padding:14px 16px;background:var(--panel);border:1px solid var(--line-2);border-radius:2px}
+.before ol{margin:6px 0 0;padding-left:22px;font-size:16px;line-height:1.7}
+.tryit{margin:14px 0 0;font-size:15px;color:var(--fg);font-weight:500}
 .steps{list-style:none;margin:8px 0 0;padding:0;max-width:62ch}
 .steps li{display:flex;gap:16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
 .steps li:last-child{border-bottom:1px solid var(--line)}
@@ -195,18 +318,31 @@ for (const t of TESTS) {
   if (ticks[t.id]) b.lastChild.textContent='done';
   b.onclick=()=>start(t); nav.appendChild(b);
 }
+function head(t){
+  if (!t.proves) return [el('h2',null,t.name), el('p','todo',t.todo)];
+  const w=el('section','writeup');
+  w.append(el('h2',null,t.name), el('p','lead',t.proves), el('div','eyebrow','How it works'), el('p','body',t.how));
+  if (t.before.length) {
+    const b=el('div','before'); b.append(el('div','eyebrow','Before you start'));
+    const ol=el('ol'); for (const x of t.before) ol.append(el('li',null,x)); b.append(ol);
+    w.insertBefore(b, w.children[2]);
+  }
+  if (t.run) w.append(el('pre','run',t.run));
+  w.append(el('p','tryit','Try it: '+t.todo));
+  return [w];
+}
 function el(tag, cls, text){ const e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; }
 async function start(t){
   if (finished) return;
   current=t;
   for (const b of nav.querySelectorAll('button')) b.setAttribute('aria-current', b.dataset.id===t.id);
-  main.replaceChildren(el('h2',null,t.name), el('p','todo',t.todo), el('p','todo','Starting…'));
+  main.replaceChildren(...head(t), el('p','todo','Starting…'));
   await fetch('/start/'+t.id,{method:'POST'});
   if (current!==t) return;
   const f=el('iframe'); f.title=t.name+' test page'; f.src='/test?'+Date.now();
   f.setAttribute('allow','clipboard-write; encrypted-media; picture-in-picture; fullscreen');
   f.onload=()=>{ try{ f.style.height=Math.max(480, f.contentDocument.documentElement.scrollHeight+24)+'px'; }catch(e){} };
-  main.replaceChildren(el('h2',null,t.name), el('p','todo',t.todo), f, el('p','cmd',CHOOSE+' '+t.shown));
+  main.replaceChildren(...head(t), f, el('p','cmd',CHOOSE+' '+t.shown));
   if (t.copy) { const b=el('button','primary',"I've copied it"); b.type='button';
     b.onclick=()=>fetch('/copied',{method:'POST'}); main.appendChild(b); }
 }
@@ -245,7 +381,8 @@ tb.onclick=()=>setTheme(document.documentElement.dataset.theme!=='light');
 </script></html>"""
 SHELL = (SHELL.replace("__THEME__", THEME).replace("__REOPEN__", json.dumps(args.reopen)).replace("__TOKEN__", json.dumps(TOKEN)).replace("__CHOOSE__", json.dumps(CHOOSE))
          .replace("__TESTS__", json.dumps([{"id": t["id"], "name": t["name"], "todo": t["todo"], "copy": t.get("copy", False),
-                                            "group": t.get("group", ""), "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
+                                            "group": t.get("group", ""),
+                                            "proves": t.get("proves", ""), "how": t.get("how", ""), "before": t.get("before", []), "run": t.get("run", ""), "shown": " ".join(shlex.quote(a) for a in t["args"])} for t in TESTS])))
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -328,10 +465,12 @@ Command that ran:
 {command}
 ```
 """)
+if t.get("act") and state["answer"] == t["yes"]:
+    print(f"The person asked you to do this step now. {t['act']}\n")
 if t.get("copy"):
     print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to, "
           "and show what they pasted under the table.\n")
-print(f"""Then ask "Go back to the test page?" as a menu with two options:
+print(f"""{'When that is done, ask' if t.get('act') and state['answer'] == t['yes'] else 'Then ask'} "Go back to the test page?" as a menu with two options:
   1. Yes, back to the test page
   2. No, I'm done
 Use your multiple-choice question tool if you have one; otherwise show the two numbered options and wait for 1 or 2.

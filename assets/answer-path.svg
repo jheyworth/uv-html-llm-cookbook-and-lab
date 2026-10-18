@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" font-family="Helvetica, Arial, sans-serif">
+  <title>Animated: your answer travels from the browser to choose.py, which prints it for the chat</title>
+  <rect x="20" y="70" width="150" height="80" rx="8" fill="#8b96a5" fill-opacity=".14" stroke="#8b96a5"/>
+  <text x="95" y="106" font-size="17" font-weight="600" fill="#8b96a5" text-anchor="middle">LLM chat</text>
+  <text x="95" y="128" font-size="13" fill="#8b96a5" text-anchor="middle">reads the answer</text>
+  <rect x="285" y="70" width="150" height="80" rx="8" fill="#8b96a5" fill-opacity=".14" stroke="#8b96a5"/>
+  <text x="360" y="106" font-size="17" font-weight="600" fill="#8b96a5" text-anchor="middle">choose.py</text>
+  <text x="360" y="128" font-size="13" fill="#8b96a5" text-anchor="middle">prints, exit code 0</text>
+  <rect x="550" y="70" width="150" height="80" rx="8" fill="#8b96a5" fill-opacity=".14" stroke="#8b96a5"/>
+  <text x="625" y="106" font-size="17" font-weight="600" fill="#8b96a5" text-anchor="middle">Browser</text>
+  <text x="625" y="128" font-size="13" fill="#8b96a5" text-anchor="middle">you click</text>
+  <path id="p" d="M550 110H435M285 110H170" stroke="#8b96a5" stroke-width="2" stroke-dasharray="4 6" fill="none"/>
+  <g>
+    <rect x="-34" y="-14" width="68" height="28" rx="14" fill="#5fd38d"/>
+    <text y="5" font-size="13" font-weight="600" fill="#111418" text-anchor="middle">Choice B</text>
+    <animateMotion dur="4s" repeatCount="indefinite" keyPoints="0;0;0.5;0.5;1;1" keyTimes="0;0.1;0.4;0.6;0.9;1" calcMode="linear" path="M625 110H360H95"/>
+  </g>
+  <text x="360" y="190" font-size="13" fill="#8b96a5" text-anchor="middle">click → page sends it to choose.py → printed → the chat reads it</text>
+</svg>

@@ -4,7 +4,7 @@
 
 ## Try it from your LLM chat session
 
-Paste this into a new chat session in an agent that can run commands (Claude Code, Codex CLI and others):
+Create a new, empty project folder and open a new chat session in it, in an agent that can run commands (Claude Code, Codex CLI and others). The BMad tests install BMad into that folder. Then paste this:
 
 ```text
 Run "uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/menu.py" in the background and do what it prints.
