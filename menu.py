@@ -82,15 +82,16 @@ TESTS = [
          args=["--timeout", "10", "--question", "Leave this unanswered", "A", "B"]),
     dict(id="png", group="Rich content", name="Picture (PNG)",
          proves="A question can come with a real screenshot.",
-         how="The agent passes a web address with --image. The address points to a PNG in this project's GitHub "
-             "repo, and the browser loads it like any picture on a web page. Nothing is installed; the picture just "
+         how="The agent passes --image with the PNG's place in this project's GitHub repo. The test page gets it "
+             "from the repo and shows it above the question: as a direct link when the repo is public, or through "
+             "this page when it's private. Nothing is installed; the picture just "
              "needs an internet connection.",
          todo="Look at the screenshot, then answer.",
          args=["--timeout", "3600", "--image", ASSET + "chat-and-page.png",
                "--question", "After you answer, which window do you switch back to?", "The chat", "The browser", "Neither"]),
     dict(id="gif", group="Rich content", name="Animated GIF",
          proves="A short looping clip can show a task step by step, the way training material does.",
-         how="An animated GIF loads exactly like the PNG: a web address passed with --image. The browser plays the "
+         how="An animated GIF comes from the GitHub repo exactly like the PNG, with --image. The browser plays the "
              "loop on its own; no player or extra code is needed.",
          todo="Watch the loop once or twice, then answer.",
          args=["--timeout", "3600", "--image", ASSET + "flow.gif",
