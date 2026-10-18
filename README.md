@@ -12,6 +12,10 @@ Open a terminal in this folder, then copy and run:
 
 [demo.sh](demo.sh) takes about a minute. It runs three rounds with the real script: one choice, several choices plus your own answer, and the copy-prompt fallback. After each round it shows what an agent would receive.
 
+## Run the tests
+
+`./tests.sh` runs 53 automated checks in about 20 seconds, without opening the browser. `./tests.sh --clicks` then asks you to click through five pages and confirm each answer.
+
 ## How it works
 
 1. The agent runs `uv run --no-project choose.py "Plan A" "Plan B"`.
@@ -56,7 +60,7 @@ An option that itself starts with `-` needs `--` before the options: `choose.py 
 - The answer from the normal page has spaces after commas in a list; the pasted prompt has none. Both are valid JSON: parse the list, don't compare the text.
 - Many agents stop a command after about 2 minutes. Run `choose.py` in the background, or with a longer command timeout.
 - `BROWSER=true` stops the browser from opening, which is useful for automated tests.
-- uv can run the script straight from a web address: `uv run --no-project https://…/choose.py "A" "B"`. Tested from a local address, not yet from GitHub.
+- uv can run the script straight from GitHub: `uv run --no-project https://raw.githubusercontent.com/jheyworth/uv-html-llm-cookbook-and-lab/main/choose.py "A" "B"`. Tested on 18 Oct 2026.
 
 ## Limits
 
