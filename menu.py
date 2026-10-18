@@ -144,7 +144,7 @@ iframe{display:block;width:100%;height:480px;border:1px solid var(--line);border
 <button id="theme" type="button">Light</button></header>
 <div class="wrap"><nav aria-label="Tests"><div class="eyebrow">Tests</div></nav>
 <main id="main"><h2>Pick a test</h2><p class="todo">Choose a test on the left. Its page appears here for you to answer.
-Your answer goes back to Claude Code.</p></main></div>
+Your answer goes back to your LLM chat session.</p></main></div>
 <script>
 const TESTS=__TESTS__, TOKEN=__TOKEN__, CHOOSE=__CHOOSE__, REOPEN=__REOPEN__;
 const nav=document.querySelector('nav'), main=document.getElementById('main');
@@ -180,10 +180,10 @@ async function poll(){
   nav.querySelector('[data-id="'+current.id+'"] .tick').textContent='done';
   for (const b of nav.querySelectorAll('button')) b.disabled=true;
   const p=el('div','panel');
-  if (current.copy) p.append(el('div','eyebrow','Copy-prompt page'), el('div','big','Paste the copied prompt into Claude Code.'));
+  if (current.copy) p.append(el('div','eyebrow','Copy-prompt page'), el('div','big','Paste the copied prompt into your LLM chat session.'));
   else if (s.code===0) p.append(el('div','eyebrow','You chose'), el('div','big',s.answer));
   else p.append(el('div','eyebrow','Result'), el('div','big','Nothing came back: exit code '+s.code+' ('+s.meaning+').'));
-  p.append(el('p',null,'Switch back to Claude Code to see this test run. It will ask if you want to come back; if you do, a new test page opens and this tab closes.'));
+  p.append(el('p',null,'Switch back to your LLM chat session to see this test run. It will ask if you want to come back; if you do, a new test page opens and this tab closes.'));
   main.replaceChildren(el('h2',null,current.name), p);
   // When a newer test page starts, this tab retires: it closes, or greys out if the browser won't allow that.
   const ping=async()=>{ try{ const r=await (await fetch('/ping')).text(); if(r!==TOKEN) retire(); }catch(e){} };
@@ -272,13 +272,30 @@ if state.get("status") != "done":
     sys.exit(0)
 t = cur["test"]
 command = CHOOSE + " " + " ".join(shlex.quote(a) for a in t["args"])
-result = state["answer"] or "nothing"
-print(f'The person ran the test "{t["name"]}" on the test page. choose.py ran:\n{command}\n'
-      f"It returned: {result} (exit code {state['code']}, {state['meaning']}).")
+expected = state["code"] == {"fallback": 4, "timeout": 3}.get(t["id"], 0)
+reopen = f"{MENU} --reopen" + (f" --port {args.port}" if args.port != 8764 else "")
+answer = state["answer"] or ("(see the prompt you pasted)" if t.get("copy") else "(nothing)")
+print(f"""The person ran a test on the test page. Show them this result exactly as laid out here, as Markdown:
+
+### {'✅' if expected else '❌'} {t['name']}
+
+| | |
+|---|---|
+| **Answer** | `{answer}` |
+| **Exit code** | {state['code']} ({state['meaning']}){'' if expected else ', not what this test expects'} |
+
+Command that ran:
+```
+{command}
+```
+""")
 if t.get("copy"):
-    print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to; "
-          "then show what they pasted.")
-print(f'Tell them that in one line. Then ask: "Go back to the test page?" If they say yes, '
-      f"run this in the background and do what it prints:\n{MENU} --reopen"
-      f"{f' --port {args.port}' if args.port != 8764 else ''}\n"
-      "A new test page tab opens in front, and the old one closes itself.")
+    print("This test copies a prompt instead of returning one. If the person hasn't pasted it yet, ask them to, "
+          "and show what they pasted under the table.\n")
+print(f"""Then ask "Go back to the test page?" as a menu with two options:
+  1. Yes, back to the test page
+  2. No, I'm done
+Use your multiple-choice question tool if you have one; otherwise show the two numbered options and wait for 1 or 2.
+If they choose Yes, run this in the background and do what it prints:
+{reopen}
+A new test page tab opens in front, and the old one closes itself. If they choose No, stop.""")
